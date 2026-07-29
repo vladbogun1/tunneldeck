@@ -459,6 +459,22 @@ public sealed partial class MainViewModel : ObservableObject
         try { await _core.StopAsync(); } catch { }
     }
 
+    /// <summary>Test-only: fake a connected + throughput state for screenshots/GIF.</summary>
+    public void SetDemoConnected()
+    {
+        Status = ConnectionStatus.Connected;
+        StatusText = "Подключено";
+        StatusDetail = "Подключено · Польша";
+        ShowSpeed = true;
+        TotalDownText = "4,2 МБ/с";
+        TotalUpText = "180 КБ/с";
+        OnPropertyChanged(nameof(IsConnected));
+        OnPropertyChanged(nameof(IsActive));
+        OnPropertyChanged(nameof(ConnectLabel));
+        OnPropertyChanged(nameof(StatusBrush));
+        ConnectionChanged?.Invoke(this, ConnectionStatus.Connected);
+    }
+
     private static void OnUi(Action action)
     {
         try

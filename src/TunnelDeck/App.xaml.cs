@@ -56,8 +56,8 @@ public partial class App : Application
             case "sub": _vm.GoSubscriptionCommand.Execute(null); break;
         }
 
-        if (Environment.GetEnvironmentVariable("TUNNELDECK_FAKESPEED") == "1")
-            foreach (var a in _vm.TunneledApps) { a.ShowSpeed = true; a.SetSpeed(120 * 1024, 1536 * 1024); }
+        if (Environment.GetEnvironmentVariable("TUNNELDECK_DEMO") == "1")
+            _vm.SetDemoConnected();
     }
 
     private void SetupTray()
