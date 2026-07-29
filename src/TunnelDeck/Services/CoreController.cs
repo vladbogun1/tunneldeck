@@ -11,60 +11,91 @@ public sealed class CoreStatusEventArgs : EventArgs
 }
 
 /// <summary>
-/// Supervises the sing-box process: writes the generated config, starts/stops the
-/// core, captures its output, and — when the kill-switch is on — auto-restarts the
-/// core if it dies unexpectedly (minimizing the window where tunneled apps could
-/// leak because the TUN interface is gone).
+/// Orchestrates the two processes that make per-app VPN work WITHOUT touching the
+/// system routing table (so other apps / online games are never disrupted):
+///
+///   1. sing-box in proxy mode  — a local SOCKS/HTTP proxy that forwards to the VPN.
+///   2. ProxiFyre               — redirects ONLY the selected apps into that proxy
+///                                (via the Windows Packet Filter driver).
+///
+/// Connecting/disconnecting just starts/stops these local processes — no routes or
+/// DNS of the whole system are changed.
 /// </summary>
 public sealed class CoreController
 {
     private readonly object _gate = new();
-    private Process? _process;
+    private readonly ProxiFyreController _pf = new();
+
+    private Process? _sb;
     private bool _wantRunning;
     private int _restartAttempts;
     private const int MaxRestartAttempts = 5;
+
+    private ServerConfig? _server;
+    private IReadOnlyList<TunneledApp> _apps = Array.Empty<TunneledApp>();
+    private AppSettings _settings = new();
+    private string? _currentServerId;
 
     public event EventHandler<CoreStatusEventArgs>? StatusChanged;
     public event EventHandler<string>? LogLine;
 
     public ConnectionStatus Status { get; private set; } = ConnectionStatus.Disconnected;
 
-    private ServerConfig? _server;
-    private IReadOnlyList<TunneledApp> _apps = Array.Empty<TunneledApp>();
-    private AppSettings _settings = new();
-
     public bool IsRunning
     {
-        get { lock (_gate) return _process is { HasExited: false }; }
+        get { lock (_gate) return _sb is { HasExited: false }; }
     }
 
-    /// <summary>Generate config from the given state and (re)start the core.</summary>
     public async Task StartAsync(ServerConfig server, IReadOnlyList<TunneledApp> apps, AppSettings settings)
     {
         _server = server;
         _apps = apps;
         _settings = settings;
+        _currentServerId = server.Id;
 
+        if (!ProxiFyreBootstrapper.IsDriverInstalled)
+        {
+            SetStatus(ConnectionStatus.Error,
+                "Драйвер Windows Packet Filter не установлен. Переустановите TunnelDeck через установщик.");
+            return;
+        }
         if (!File.Exists(Paths.SingBoxExe))
-            throw new FileNotFoundException("sing-box core is not installed.", Paths.SingBoxExe);
+        {
+            SetStatus(ConnectionStatus.Error, "Ядро sing-box не установлено.");
+            return;
+        }
+        if (!ProxiFyreBootstrapper.IsInstalled)
+        {
+            SetStatus(ConnectionStatus.Error, "ProxiFyre не установлен.");
+            return;
+        }
 
         await StopAsync();
-        KillStrayCores();
+        KillStraySingBox();
+        ProxiFyreController.KillStray();
 
         _wantRunning = true;
         _restartAttempts = 0;
         SetStatus(ConnectionStatus.Connecting, $"Подключение к {server.Name}…");
-        LaunchProcess();
+        LaunchSingBox();
 
-        // Grace period: if the process survives a couple of seconds without a fatal
-        // error, treat it as connected. sing-box exits fast on config errors.
         _ = Task.Run(async () =>
         {
             await Task.Delay(1800);
             lock (_gate)
             {
-                if (_wantRunning && _process is { HasExited: false } && Status == ConnectionStatus.Connecting)
-                    SetStatus(ConnectionStatus.Connected, $"Подключено · {_server?.Name}");
+                if (!_wantRunning || _sb is not { HasExited: false } || Status != ConnectionStatus.Connecting)
+                    return;
+            }
+            try
+            {
+                _pf.WriteConfig(_apps);
+                _pf.Start();
+                SetStatus(ConnectionStatus.Connected, $"Подключено · {_server?.Name}");
+            }
+            catch (Exception ex)
+            {
+                SetStatus(ConnectionStatus.Error, "ProxiFyre: " + ex.Message);
             }
         });
     }
@@ -72,22 +103,15 @@ public sealed class CoreController
     public Task StopAsync()
     {
         _wantRunning = false;
-        Process? proc;
-        lock (_gate)
-        {
-            proc = _process;
-            _process = null;
-        }
 
+        try { _pf.Stop(); } catch { }
+
+        Process? proc;
+        lock (_gate) { proc = _sb; _sb = null; }
         if (proc is not null)
         {
-            try
-            {
-                if (!proc.HasExited)
-                    proc.Kill(entireProcessTree: true);
-                proc.WaitForExit(4000);
-            }
-            catch { /* already gone */ }
+            try { if (!proc.HasExited) proc.Kill(entireProcessTree: true); proc.WaitForExit(4000); }
+            catch { }
             finally { proc.Dispose(); }
         }
 
@@ -96,33 +120,36 @@ public sealed class CoreController
     }
 
     /// <summary>
-    /// Kill any orphaned sing-box processes from a previous run (e.g. after a crash)
-    /// so they don't keep a stale TUN up or hold the Clash-API port, which would make
-    /// the new instance fail and break connectivity.
+    /// Apply a config change while connected. Because nothing touches system routes,
+    /// this never disrupts other apps. If only the app list changed we just rewrite
+    /// ProxiFyre's config and restart it; if the server changed we restart everything.
     /// </summary>
-    private static void KillStrayCores()
+    public async Task ApplyAsync(ServerConfig server, IReadOnlyList<TunneledApp> apps, AppSettings settings)
     {
+        if (!IsRunning && !_wantRunning) return;
+
+        if (server.Id != _currentServerId)
+        {
+            await StartAsync(server, apps, settings);
+            return;
+        }
+
+        _apps = apps;
+        _settings = settings;
         try
         {
-            foreach (var p in Process.GetProcessesByName("sing-box"))
-            {
-                try
-                {
-                    var path = p.MainModule?.FileName;
-                    if (path is null ||
-                        string.Equals(path, Paths.SingBoxExe, StringComparison.OrdinalIgnoreCase))
-                        p.Kill(entireProcessTree: true);
-                }
-                catch { }
-                finally { p.Dispose(); }
-            }
+            _pf.WriteConfig(_apps);
+            _pf.Start(); // restart ProxiFyre with the new app list (no route changes)
         }
-        catch { }
+        catch (Exception ex)
+        {
+            SetStatus(ConnectionStatus.Error, "ProxiFyre: " + ex.Message);
+        }
     }
 
-    private void LaunchProcess()
+    private void LaunchSingBox()
     {
-        var config = SingBoxConfigBuilder.Build(_server!, _apps, _settings);
+        var config = SingBoxConfigBuilder.BuildProxyMode(_server!, _settings);
         File.WriteAllText(Paths.GeneratedConfig, config);
 
         var psi = new ProcessStartInfo
@@ -139,13 +166,13 @@ public sealed class CoreController
         var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
         proc.OutputDataReceived += (_, e) => OnOutput(e.Data);
         proc.ErrorDataReceived += (_, e) => OnOutput(e.Data);
-        proc.Exited += OnProcessExited;
+        proc.Exited += OnSingBoxExited;
 
         proc.Start();
         proc.BeginOutputReadLine();
         proc.BeginErrorReadLine();
 
-        lock (_gate) _process = proc;
+        lock (_gate) _sb = proc;
     }
 
     private void OnOutput(string? line)
@@ -154,7 +181,6 @@ public sealed class CoreController
         LogLine?.Invoke(this, line);
         try { File.AppendAllText(Paths.LogFile, line + Environment.NewLine); } catch { }
 
-        // Surface obvious fatal errors immediately.
         if (line.Contains("FATAL", StringComparison.OrdinalIgnoreCase) ||
             line.Contains("configuration error", StringComparison.OrdinalIgnoreCase))
         {
@@ -162,32 +188,43 @@ public sealed class CoreController
         }
     }
 
-    private void OnProcessExited(object? sender, EventArgs e)
+    private void OnSingBoxExited(object? sender, EventArgs e)
     {
-        if (!_wantRunning)
-            return; // expected stop
+        if (!_wantRunning) return;
 
-        // Unexpected exit. Kill-switch: while the core is down, the TUN is gone and
-        // tunneled apps would use the direct route — so restart quickly.
+        // Restarting sing-box does NOT change system routes, so this is safe for other apps.
         if (_settings.KillSwitch && _restartAttempts < MaxRestartAttempts)
         {
             _restartAttempts++;
             SetStatus(ConnectionStatus.Reconnecting, $"Ядро перезапускается ({_restartAttempts}/{MaxRestartAttempts})…");
-            try { LaunchProcess(); }
+            try { LaunchSingBox(); }
             catch (Exception ex) { SetStatus(ConnectionStatus.Error, ex.Message); }
         }
         else
         {
             _wantRunning = false;
+            try { _pf.Stop(); } catch { }
             SetStatus(ConnectionStatus.Error, "Ядро неожиданно остановилось.");
         }
     }
 
-    /// <summary>Hot-reload: rebuild config and restart the core to apply changes.</summary>
-    public async Task ApplyAsync(ServerConfig server, IReadOnlyList<TunneledApp> apps, AppSettings settings)
+    private static void KillStraySingBox()
     {
-        if (IsRunning || _wantRunning)
-            await StartAsync(server, apps, settings);
+        try
+        {
+            foreach (var p in Process.GetProcessesByName("sing-box"))
+            {
+                try
+                {
+                    var path = p.MainModule?.FileName;
+                    if (path is null || string.Equals(path, Paths.SingBoxExe, StringComparison.OrdinalIgnoreCase))
+                        p.Kill(entireProcessTree: true);
+                }
+                catch { }
+                finally { p.Dispose(); }
+            }
+        }
+        catch { }
     }
 
     private void SetStatus(ConnectionStatus status, string? message)

@@ -126,12 +126,16 @@ public sealed partial class MainViewModel : ObservableObject
             StatusDetail = "Подготовка ядра…";
             var progress = new Progress<string>(msg => OnUi(() => StatusDetail = msg));
             await _bootstrap.EnsureAsync(progress);
+            await ProxiFyreBootstrapper.EnsureAsync(progress);
             _coreReady = true;
-            StatusDetail = "";
+
+            StatusDetail = ProxiFyreBootstrapper.IsDriverInstalled
+                ? ""
+                : "Драйвер сетевого фильтра не установлен — переустановите TunnelDeck через установщик.";
         }
         catch (Exception ex)
         {
-            StatusDetail = "Не удалось загрузить ядро: " + ex.Message;
+            StatusDetail = "Не удалось подготовить компоненты: " + ex.Message;
         }
         finally { IsBusy = false; }
 

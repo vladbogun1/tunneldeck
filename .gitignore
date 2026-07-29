@@ -11,6 +11,10 @@ dist/
 core/
 *.log
 
+## Installer: bundled third-party binaries + compiled output (not committed)
+installer/assets/
+installer/Output/
+
 ## OS
 Thumbs.db
 Desktop.ini

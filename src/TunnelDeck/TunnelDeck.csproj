@@ -10,7 +10,7 @@
     <AssemblyName>TunnelDeck</AssemblyName>
     <RootNamespace>TunnelDeck</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Company>TunnelDeck</Company>
     <Product>TunnelDeck</Product>
     <!-- Tray app: keep a single self-contained build simple -->

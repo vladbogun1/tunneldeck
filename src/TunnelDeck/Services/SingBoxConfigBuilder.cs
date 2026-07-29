@@ -22,6 +22,85 @@ public static class SingBoxConfigBuilder
     public const string ClashApiListen = "127.0.0.1:9797";
     public const string ClashApiBaseUrl = "http://127.0.0.1:9797";
 
+    /// <summary>Local SOCKS/HTTP proxy that ProxiFyre redirects selected apps into.</summary>
+    public const string SocksHost = "127.0.0.1";
+    public const int SocksPort = 24808;
+    public const string SocksEndpoint = "127.0.0.1:24808";
+
+    /// <summary>
+    /// Proxy-mode config (no TUN): a local mixed (SOCKS+HTTP) inbound that forwards
+    /// everything it receives to the VPN. ProxiFyre redirects only the chosen apps
+    /// here, so the system routing table is never touched — connecting/disconnecting
+    /// cannot disrupt other apps (e.g. online games).
+    /// </summary>
+    public static string BuildProxyMode(ServerConfig server, AppSettings settings)
+    {
+        var config = new Dictionary<string, object?>
+        {
+            ["log"] = new Dictionary<string, object?>
+            {
+                ["level"] = string.IsNullOrWhiteSpace(settings.LogLevel) ? "warn" : settings.LogLevel,
+                ["timestamp"] = true
+            },
+            ["dns"] = BuildProxyModeDns(server),
+            ["inbounds"] = new object[]
+            {
+                new Dictionary<string, object?>
+                {
+                    ["type"] = "mixed",
+                    ["tag"] = "in",
+                    ["listen"] = SocksHost,
+                    ["listen_port"] = SocksPort
+                }
+            },
+            ["outbounds"] = BuildOutbounds(server),
+            ["route"] = new Dictionary<string, object?>
+            {
+                ["rules"] = ServerDomainRule(server, "outbound", "direct"),
+                ["final"] = "proxy"
+            },
+            ["experimental"] = new Dictionary<string, object?>
+            {
+                ["clash_api"] = new Dictionary<string, object?> { ["external_controller"] = ClashApiListen }
+            }
+        };
+        return JsonSerializer.Serialize(config, Json);
+    }
+
+    private static object BuildProxyModeDns(ServerConfig server) => new Dictionary<string, object?>
+    {
+        ["servers"] = new object[]
+        {
+            new Dictionary<string, object?> { ["tag"] = "dns-proxy", ["address"] = "https://1.1.1.1/dns-query", ["detour"] = "proxy" },
+            new Dictionary<string, object?> { ["tag"] = "dns-direct", ["address"] = "https://8.8.8.8/dns-query", ["detour"] = "direct" }
+        },
+        ["rules"] = ServerDomainRule(server, "server", "dns-direct"),
+        ["final"] = "dns-proxy",
+        ["strategy"] = "ipv4_only",
+        ["independent_cache"] = true
+    };
+
+    /// <summary>
+    /// A rule forcing the proxy server's own hostname to resolve/route DIRECTLY
+    /// (via dns-direct / direct outbound) — otherwise dialing the proxy would try to go
+    /// through the proxy itself (DNS/route loopback). <paramref name="key"/> is
+    /// "server" for a DNS rule or "outbound" for a route rule; <paramref name="target"/>
+    /// is "dns-direct" or "direct" respectively.
+    /// </summary>
+    private static List<object> ServerDomainRule(ServerConfig server, string key, string target)
+    {
+        var domains = new List<string>();
+        if (!string.IsNullOrWhiteSpace(server.Server) && !IsIpAddress(server.Server))
+            domains.Add(server.Server);
+        if (!string.IsNullOrWhiteSpace(server.Sni) && !IsIpAddress(server.Sni) && server.Sni != server.Server)
+            domains.Add(server.Sni);
+
+        var rules = new List<object>();
+        if (domains.Count > 0)
+            rules.Add(new Dictionary<string, object?> { ["domain"] = domains, [key] = target });
+        return rules;
+    }
+
     private static readonly JsonSerializerOptions Json = new()
     {
         WriteIndented = true,
