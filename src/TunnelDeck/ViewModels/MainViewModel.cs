@@ -1,6 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Net;
-using System.Net.Http;
 using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -56,14 +54,6 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _sessionDownText = "0 Б";
     [ObservableProperty] private string _sessionUpText = "0 Б";
 
-    // Check result popup (exit IP + flag)
-    [ObservableProperty] private bool _checkResultVisible;
-    [ObservableProperty] private bool _checkBusy;
-    [ObservableProperty] private string _checkIp = "";
-    [ObservableProperty] private string _checkLoc = "";
-    [ObservableProperty] private System.Windows.Media.ImageSource? _checkFlagImage;
-    public bool CheckHasFlag => CheckFlagImage is not null;
-    partial void OnCheckFlagImageChanged(System.Windows.Media.ImageSource? value) => OnPropertyChanged(nameof(CheckHasFlag));
 
     // Auto-update
     [ObservableProperty] private bool _updateAvailable;
@@ -223,9 +213,6 @@ public sealed partial class MainViewModel : ObservableObject
         _connTimer.Stop();
         ActiveConnections.Clear();
         OnPropertyChanged(nameof(HasConnections));
-
-        // Reset the check plate when the tunnel drops.
-        CheckResultVisible = false;
     }
 
     public event EventHandler<ConnectionStatus>? ConnectionChanged;
@@ -442,54 +429,6 @@ public sealed partial class MainViewModel : ObservableObject
         try { await _core.StopAsync(); }
         catch (Exception ex) { StatusDetail = ex.Message; }
         finally { IsBusy = false; }
-    }
-
-    /// <summary>Query the exit IP/country THROUGH the VPN proxy to confirm the tunnel works.</summary>
-    [RelayCommand]
-    private async Task CheckAsync()
-    {
-        if (!IsConnected) { StatusDetail = "Сначала подключитесь."; return; }
-        try
-        {
-            // Show the popup immediately in a loading state, then fill it in.
-            CheckBusy = true;
-            CheckIp = "";
-            CheckLoc = "";
-            CheckFlagImage = null;
-            CheckResultVisible = true;
-
-            var handler = new HttpClientHandler
-            {
-                Proxy = new WebProxy($"socks5://{SingBoxConfigBuilder.SocksEndpoint}"),
-                UseProxy = true
-            };
-            using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
-            http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "curl/8");
-            var trace = await http.GetStringAsync("https://www.cloudflare.com/cdn-cgi/trace");
-            var ip = TraceField(trace, "ip");
-            var loc = TraceField(trace, "loc");
-
-            CheckBusy = false;
-            if (string.IsNullOrEmpty(ip)) { CheckIp = "—"; return; }
-            CheckIp = ip;
-            CheckLoc = loc;
-            CheckFlagImage = FlagFactory.For(loc);
-        }
-        catch (Exception ex)
-        {
-            CheckBusy = false;
-            CheckIp = "—";
-            CheckLoc = "";
-            StatusDetail = "Проверка не удалась: " + ex.Message;
-        }
-    }
-
-    private static string TraceField(string trace, string key)
-    {
-        foreach (var line in trace.Split('\n'))
-            if (line.StartsWith(key + "=", StringComparison.OrdinalIgnoreCase))
-                return line[(key.Length + 1)..].Trim();
-        return "";
     }
 
     private async Task ApplyIfRunningAsync()
@@ -758,11 +697,6 @@ public sealed partial class MainViewModel : ObservableObject
         if (Environment.GetEnvironmentVariable("TUNNELDECK_DEMO") == "2")
         {
             StatusDetail = "";
-            CheckBusy = false;
-            CheckIp = "146.70.28.14";
-            CheckLoc = "NL";
-            CheckFlagImage = FlagFactory.For("NL");
-            CheckResultVisible = true;
             var demoPings = new[] { 38, 120, 260 };
             for (int i = 0; i < Servers.Count; i++) Servers[i].PingMs = demoPings[i % demoPings.Length];
 
