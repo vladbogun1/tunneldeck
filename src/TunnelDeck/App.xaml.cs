@@ -36,10 +36,15 @@ public partial class App : Application
         // Elevate without a UAC prompt: if we're not admin, hand off to the scheduled
         // task (which runs this exe with highest privileges) and exit. Skipped in test
         // mode so debug runs don't relaunch the installed copy.
-        if (!testMode && !ElevationService.IsElevated() && ElevationService.RelaunchElevated())
+        if (!testMode && !ElevationService.IsElevated())
         {
-            Shutdown();
-            return;
+            // Prefer the no-UAC scheduled task; fall back to a UAC prompt if it's
+            // missing/broken so we never run unprivileged and fail on connect.
+            if (ElevationService.RelaunchElevated() || ElevationService.RelaunchViaUac(e.Args))
+            {
+                Shutdown();
+                return;
+            }
         }
 
         var mutexName = testMode ? $"TunnelDeck.SingleInstance.{instance}" : "TunnelDeck.SingleInstance";

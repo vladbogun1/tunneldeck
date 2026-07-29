@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Principal;
 
 namespace TunnelDeck.Services;
 
@@ -23,15 +24,22 @@ public static class AutostartService
         var exe = Environment.ProcessPath;
         if (string.IsNullOrWhiteSpace(exe)) return;
 
-        // Logon trigger, highest privileges, starts minimized to tray.
+        var user = WindowsIdentity.GetCurrent().Name;               // DOMAIN\user
+        var task = ElevationService.StartupTask;
+        const string sddl = "D:(A;;GRGX;;;BU)(A;;GA;;;BA)(A;;GA;;;SY)";
+
+        // Logon trigger, current user with highest privileges, starts minimized to
+        // tray; the SD lets a non-elevated launch trigger it (no UAC prompt).
         var ps =
             "$ErrorActionPreference='Stop';" +
             "$t=New-ScheduledTaskTrigger -AtLogOn;" +
             $"$a=New-ScheduledTaskAction -Execute '{exe}' -Argument '--tray';" +
-            "$p=New-ScheduledTaskPrincipal -GroupId 'S-1-5-32-545' -RunLevel Highest;" +
+            $"$p=New-ScheduledTaskPrincipal -UserId '{user}' -LogonType Interactive -RunLevel Highest;" +
             "$s=New-ScheduledTaskSettingsSet -MultipleInstances Parallel -ExecutionTimeLimit ([TimeSpan]::Zero);" +
             "$s.DisallowStartIfOnBatteries=$false;$s.StopIfGoingOnBatteries=$false;" +
-            $"Register-ScheduledTask -TaskName '{ElevationService.StartupTask}' -Trigger $t -Action $a -Principal $p -Settings $s -Force";
+            $"Register-ScheduledTask -TaskName '{task}' -Trigger $t -Action $a -Principal $p -Settings $s -Force;" +
+            "$svc=New-Object -ComObject Schedule.Service;$svc.Connect();" +
+            $"$svc.GetFolder('\\').GetTask('{task}').SetSecurityDescriptor('{sddl}',0)";
 
         Run("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"{ps}\"");
     }

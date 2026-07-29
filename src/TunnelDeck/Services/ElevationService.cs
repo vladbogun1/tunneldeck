@@ -52,4 +52,27 @@ public static class ElevationService
         }
         catch { return false; }
     }
+
+    /// <summary>
+    /// Last-resort elevation if the scheduled task is missing/broken: relaunch the exe
+    /// via ShellExecute "runas" (a normal UAC prompt). Better than running unprivileged
+    /// and failing later. Returns true if a new elevated process was launched.
+    /// </summary>
+    public static bool RelaunchViaUac(string[] args)
+    {
+        try
+        {
+            var exe = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(exe)) return false;
+            var psi = new ProcessStartInfo
+            {
+                FileName = exe,
+                Arguments = string.Join(' ', args),
+                UseShellExecute = true,
+                Verb = "runas"
+            };
+            return Process.Start(psi) is not null;
+        }
+        catch { return false; }   // user declined the UAC prompt, etc.
+    }
 }
