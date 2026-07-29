@@ -64,7 +64,7 @@ public partial class App : Application
     {
         _tray = new TaskbarIcon
         {
-            Icon = TrayIconFactory.For(ConnectionStatus.Disconnected),
+            IconSource = TrayIconFactory.For(ConnectionStatus.Disconnected),
             ToolTipText = "TunnelDeck — выключено",
             ContextMenu = BuildContextMenu()
         };
@@ -101,7 +101,7 @@ public partial class App : Application
         if (_tray is null || _shuttingDown) return;
         try
         {
-        _tray.Icon = TrayIconFactory.For(status);
+        _tray.IconSource = TrayIconFactory.For(status);
         _tray.ToolTipText = status switch
         {
             ConnectionStatus.Connected => "TunnelDeck — подключено",

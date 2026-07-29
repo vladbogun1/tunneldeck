@@ -1,68 +1,71 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using TunnelDeck.Models;
+using DColor = System.Drawing.Color;
 
 namespace TunnelDeck.Services;
 
 /// <summary>
-/// Builds the tray icon for a connection status: the brand icon inside a bold
-/// colored frame — green = connected, red = off, amber = connecting — so the state
-/// is obvious even at 16px.
+/// Builds the tray icon (as a WPF <see cref="ImageSource"/>) for a connection status:
+/// the brand icon inside a bold colored frame — green = connected, red = off,
+/// amber = connecting. Using IconSource (not Icon) so H.NotifyIcon reliably refreshes
+/// the tray when the status changes.
 /// </summary>
 public static class TrayIconFactory
 {
-    private static readonly Dictionary<ConnectionStatus, Icon> _cache = new();
+    private static readonly Dictionary<ConnectionStatus, ImageSource> _cache = new();
 
-    public static Icon For(ConnectionStatus status)
+    public static ImageSource For(ConnectionStatus status)
     {
         if (_cache.TryGetValue(status, out var cached)) return cached;
         var (png, border) = Map(status);
-        var icon = Build(png, border);
-        _cache[status] = icon;
-        return icon;
+        var img = Build(png, border);
+        _cache[status] = img;
+        return img;
     }
 
-    private static (string png, Color border) Map(ConnectionStatus s) => s switch
+    private static (string png, DColor border) Map(ConnectionStatus s) => s switch
     {
-        ConnectionStatus.Connected => ("icon-on.png", Color.FromArgb(0x1F, 0xA9, 0x3B)),   // green
-        ConnectionStatus.Connecting => ("icon-off.png", Color.FromArgb(0xF1, 0xC4, 0x0F)), // amber
-        ConnectionStatus.Reconnecting => ("icon-off.png", Color.FromArgb(0xF1, 0xC4, 0x0F)),
-        _ => ("icon-off.png", Color.FromArgb(0xE0, 0x2B, 0x1A))                             // red (off/error)
+        ConnectionStatus.Connected => ("icon-on.png", DColor.FromArgb(0x1F, 0xA9, 0x3B)),   // green
+        ConnectionStatus.Connecting => ("icon-off.png", DColor.FromArgb(0xF1, 0xC4, 0x0F)), // amber
+        ConnectionStatus.Reconnecting => ("icon-off.png", DColor.FromArgb(0xF1, 0xC4, 0x0F)),
+        _ => ("icon-off.png", DColor.FromArgb(0xE0, 0x2B, 0x1A))                             // red (off/error)
     };
 
-    private static Icon Build(string resourceName, Color border)
+    private static ImageSource Build(string resourceName, DColor border)
     {
-        const int size = 32;
+        const int size = 64;
         using var bmp = new Bitmap(size, size);
         using (var g = Graphics.FromImage(bmp))
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            g.Clear(Color.Transparent);
+            g.Clear(DColor.Transparent);
 
-            // Solid colored rounded frame (the status indicator).
             using (var br = new SolidBrush(border))
-            using (var frame = Rounded(new Rectangle(0, 0, size, size), 8))
+            using (var frame = Rounded(new Rectangle(0, 0, size, size), 16))
                 g.FillPath(br, frame);
 
-            // Brand icon inset, leaving a ~4px colored border all around.
             var src = LoadBitmap(resourceName);
             if (src is not null)
             {
                 using (src)
                 {
-                    const int inset = 4;
-                    // white rounded plate behind the icon so it reads on any frame color
-                    using (var plate = new SolidBrush(Color.White))
-                    using (var pp = Rounded(new Rectangle(inset, inset, size - inset * 2, size - inset * 2), 5))
+                    const int inset = 8;
+                    using (var plate = new SolidBrush(DColor.White))
+                    using (var pp = Rounded(new Rectangle(inset, inset, size - inset * 2, size - inset * 2), 10))
                         g.FillPath(plate, pp);
                     g.DrawImage(src, inset, inset, size - inset * 2, size - inset * 2);
                 }
             }
         }
-        return (Icon)Icon.FromHandle(bmp.GetHicon()).Clone();
+        return ToImageSource(bmp);
     }
 
     private static Bitmap? LoadBitmap(string resourceName)
@@ -74,6 +77,20 @@ public static class TrayIconFactory
             return new Bitmap(stream);
         }
         catch { return null; }
+    }
+
+    private static ImageSource ToImageSource(Bitmap bmp)
+    {
+        using var ms = new MemoryStream();
+        bmp.Save(ms, ImageFormat.Png);
+        ms.Position = 0;
+        var bi = new BitmapImage();
+        bi.BeginInit();
+        bi.CacheOption = BitmapCacheOption.OnLoad;
+        bi.StreamSource = ms;
+        bi.EndInit();
+        bi.Freeze();
+        return bi;
     }
 
     private static GraphicsPath Rounded(Rectangle r, int radius)
