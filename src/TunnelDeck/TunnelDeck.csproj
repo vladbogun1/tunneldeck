@@ -21,6 +21,9 @@
   <ItemGroup>
     <Resource Include="Assets\icon-on.png" />
     <Resource Include="Assets\icon-off.png" />
+    <Resource Include="Assets\tray-on.ico" />
+    <Resource Include="Assets\tray-off.ico" />
+    <Resource Include="Assets\tray-connecting.ico" />
   </ItemGroup>
 
   <ItemGroup>
