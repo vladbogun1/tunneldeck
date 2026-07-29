@@ -9,8 +9,8 @@
     <s:String x:Key="S.EmptyTitle">Пока ничего не выбрано</s:String>
     <s:String x:Key="S.EmptySub">Добавьте приложение или сайт, чтобы направить трафик через VPN.</s:String>
     <s:String x:Key="S.AddApp">＋  Добавить приложение</s:String>
-    <s:String x:Key="S.RefreshKey">↻ Обновить ключ</s:String>
-    <s:String x:Key="S.Check">🔎 Проверить</s:String>
+    <s:String x:Key="S.RefreshKey">Обновить ключ</s:String>
+    <s:String x:Key="S.Check">Проверить</s:String>
     <s:String x:Key="S.OnboardTitle">Добавьте ключ VPN</s:String>
     <s:String x:Key="S.OnboardSub">Вставьте ссылку-подписку (ключ от вашего VPN-бота). TunnelDeck сам загрузит список серверов.</s:String>
     <s:String x:Key="S.PasteKey">Вставить ключ подписки</s:String>
