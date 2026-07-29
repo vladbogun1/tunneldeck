@@ -14,8 +14,8 @@
         <v:EmojiStripConverter x:Key="StripEmoji"/>
     </Window.Resources>
 
-    <Border Background="{StaticResource WindowBg}" CornerRadius="10" BorderBrush="{StaticResource Stroke}"
-            BorderThickness="1" Margin="12" TextElement.Foreground="{StaticResource TextPrimary}">
+    <Border Background="{DynamicResource WindowBg}" CornerRadius="10" BorderBrush="{DynamicResource Stroke}"
+            BorderThickness="1" Margin="12" TextElement.Foreground="{DynamicResource TextPrimary}">
         <Border.Effect>
             <DropShadowEffect BlurRadius="28" ShadowDepth="3" Opacity="0.22" Color="Black"/>
         </Border.Effect>
@@ -47,11 +47,11 @@
                 </Grid>
 
                 <!-- Connect card -->
-                <Border Grid.Row="1" Background="{StaticResource Card}" CornerRadius="8" Padding="16"
-                        Margin="0,14,0,0" BorderBrush="{StaticResource Stroke}" BorderThickness="1">
+                <Border Grid.Row="1" Background="{DynamicResource Card}" CornerRadius="8" Padding="16"
+                        Margin="0,14,0,0" BorderBrush="{DynamicResource Stroke}" BorderThickness="1">
                     <StackPanel>
                         <!-- Update banner -->
-                        <Border Background="#E7F1FF" BorderBrush="{StaticResource Accent}" BorderThickness="1"
+                        <Border Background="{DynamicResource AccentSoft}" BorderBrush="{StaticResource Accent}" BorderThickness="1"
                                 CornerRadius="7" Padding="10,8" Margin="0,0,0,12"
                                 Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolVis}}">
                             <Grid>
@@ -65,7 +65,7 @@
                                             HorizontalAlignment="Left" Padding="0" Margin="0,1,0,0" FontSize="11"
                                             Command="{Binding OpenReleaseNotesCommand}"
                                             Visibility="{Binding UpdateStatus, Converter={StaticResource BoolVisInv}}"/>
-                                    <TextBlock Text="{Binding UpdateStatus}" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                    <TextBlock Text="{Binding UpdateStatus}" FontSize="11" Foreground="{DynamicResource TextSecondary}"
                                                TextWrapping="Wrap"
                                                Visibility="{Binding UpdateStatus, Converter={StaticResource BoolVis}}"/>
                                 </StackPanel>
@@ -78,28 +78,28 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding StatusText}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <TextBlock Text="·" FontSize="14" Margin="7,0,7,0" VerticalAlignment="Center"
-                                       Foreground="{StaticResource TextTertiary}"
+                                       Foreground="{DynamicResource TextTertiary}"
                                        Visibility="{Binding ShowDuration, Converter={StaticResource BoolVis}}"/>
                             <TextBlock Text="{Binding SessionDurationText}" FontSize="13" VerticalAlignment="Center"
-                                       FontFamily="Consolas, Segoe UI" Foreground="{StaticResource TextSecondary}"
+                                       FontFamily="Consolas, Segoe UI" Foreground="{DynamicResource TextSecondary}"
                                        Visibility="{Binding ShowDuration, Converter={StaticResource BoolVis}}"/>
                         </StackPanel>
-                        <TextBlock Text="{Binding StatusDetail}" Foreground="{StaticResource TextSecondary}"
+                        <TextBlock Text="{Binding StatusDetail}" Foreground="{DynamicResource TextSecondary}"
                                    FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"
                                    Visibility="{Binding StatusDetail, Converter={StaticResource BoolVis}}"/>
 
                         <!-- Throughput (live) + cumulative session totals, one compact row -->
                         <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
                                     Visibility="{Binding ShowSpeed, Converter={StaticResource BoolVis}}">
-                            <TextBlock Text="↓" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Green}" VerticalAlignment="Center"/>
+                            <TextBlock Text="↓" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource Green}" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding TotalDownText}" FontSize="12" Margin="4,0,12,0"
-                                       Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                                       Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                             <TextBlock Text="↑" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Accent}" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding TotalUpText}" FontSize="12" Margin="4,0,0,0"
-                                       Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                                       Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
                             <TextBlock Text="·" FontSize="12" Margin="10,0,10,0" VerticalAlignment="Center"
-                                       Foreground="{StaticResource TextTertiary}"/>
-                            <TextBlock FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextTertiary}"
+                                       Foreground="{DynamicResource TextTertiary}"/>
+                            <TextBlock FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextTertiary}"
                                        ToolTip="{DynamicResource S.Session}">
                                 <Run Text="{Binding SessionDownText, Mode=OneWay}"/><Run Text=" / "/><Run Text="{Binding SessionUpText, Mode=OneWay}"/>
                             </TextBlock>
@@ -118,7 +118,7 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <Border Grid.Column="0" Width="22" Height="14" CornerRadius="2" Margin="0,0,9,0"
-                                                VerticalAlignment="Center" BorderBrush="{StaticResource Stroke}" BorderThickness="0.6"
+                                                VerticalAlignment="Center" BorderBrush="{DynamicResource Stroke}" BorderThickness="0.6"
                                                 Visibility="{Binding HasFlag, Converter={StaticResource BoolVis}}">
                                             <Border.Background>
                                                 <ImageBrush ImageSource="{Binding FlagImage}" Stretch="Fill"/>
@@ -147,7 +147,7 @@
 
                 <!-- Apps section header -->
                 <TextBlock Grid.Row="2" Text="{DynamicResource S.AppsHeader}" FontSize="11" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextTertiary}" Margin="2,20,0,8"
+                           Foreground="{DynamicResource TextTertiary}" Margin="2,20,0,8"
                            Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
 
                 <!-- Apps list -->
@@ -157,8 +157,8 @@
                         <ItemsControl ItemsSource="{Binding TunneledApps}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="{StaticResource Card}" CornerRadius="8" Padding="12,10"
-                                            Margin="0,0,0,8" BorderBrush="{StaticResource Stroke}" BorderThickness="1">
+                                    <Border Background="{DynamicResource Card}" CornerRadius="8" Padding="12,10"
+                                            Margin="0,0,0,8" BorderBrush="{DynamicResource Stroke}" BorderThickness="1">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
@@ -172,7 +172,7 @@
                                                 <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Text="{Binding ProcessName}" FontSize="11"
-                                                           Foreground="{StaticResource TextSecondary}"/>
+                                                           Foreground="{DynamicResource TextSecondary}"/>
                                             </StackPanel>
                                             <ToggleButton Grid.Column="2" Style="{StaticResource Switch}"
                                                           IsChecked="{Binding Enabled}" VerticalAlignment="Center"/>
@@ -190,13 +190,13 @@
 
                         <!-- Sites -->
                         <TextBlock Text="{DynamicResource S.SitesHeader}" FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{StaticResource TextTertiary}" Margin="2,12,0,8"
+                                   Foreground="{DynamicResource TextTertiary}" Margin="2,12,0,8"
                                    Visibility="{Binding HasSites, Converter={StaticResource BoolVis}}"/>
                         <ItemsControl ItemsSource="{Binding TunneledSites}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="{StaticResource Card}" CornerRadius="8" Padding="12,10"
-                                            Margin="0,0,0,8" BorderBrush="{StaticResource Stroke}" BorderThickness="1">
+                                    <Border Background="{DynamicResource Card}" CornerRadius="8" Padding="12,10"
+                                            Margin="0,0,0,8" BorderBrush="{DynamicResource Stroke}" BorderThickness="1">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
@@ -209,7 +209,7 @@
                                                 <TextBlock Text="{Binding Domain}" FontSize="13" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Text="{DynamicResource S.ViaBrowser}" FontSize="11"
-                                                           Foreground="{StaticResource TextSecondary}"/>
+                                                           Foreground="{DynamicResource TextSecondary}"/>
                                             </StackPanel>
                                             <Button Grid.Column="2" Style="{StaticResource IconButton}" Content="✕"
                                                     Width="30" Height="30" FontSize="12" ToolTip="{DynamicResource S.TipRemove}"
@@ -222,14 +222,14 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <Border Background="{StaticResource CardAlt}" CornerRadius="8" Padding="16" Margin="0,2,0,0"
-                                BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                        <Border Background="{DynamicResource CardAlt}" CornerRadius="8" Padding="16" Margin="0,2,0,0"
+                                BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
                                 Visibility="{Binding NothingTunneled, Converter={StaticResource BoolVis}}">
                             <StackPanel>
                                 <TextBlock Text="{DynamicResource S.EmptyTitle}" FontSize="13" FontWeight="SemiBold"
-                                           HorizontalAlignment="Center" Foreground="{StaticResource TextSecondary}"/>
+                                           HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/>
                                 <TextBlock Text="{DynamicResource S.EmptySub}"
-                                           FontSize="11.5" Foreground="{StaticResource TextTertiary}"
+                                           FontSize="11.5" Foreground="{DynamicResource TextTertiary}"
                                            TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Border>
@@ -237,14 +237,14 @@
                 </ScrollViewer>
 
                 <!-- Onboarding (no subscription) -->
-                <Border Grid.Row="3" Background="{StaticResource Card}" CornerRadius="8" Padding="20"
-                        Margin="0,14,0,0" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                <Border Grid.Row="3" Background="{DynamicResource Card}" CornerRadius="8" Padding="20"
+                        Margin="0,14,0,0" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
                         VerticalAlignment="Top"
                         Visibility="{Binding HasSubscription, Converter={StaticResource BoolVisInv}}">
                     <StackPanel>
                         <TextBlock Text="{DynamicResource S.OnboardTitle}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{DynamicResource S.OnboardSub}"
-                                   Foreground="{StaticResource TextSecondary}" FontSize="12.5" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextSecondary}" FontSize="12.5" TextWrapping="Wrap"
                                    Margin="0,6,0,14"/>
                         <Button Content="{DynamicResource S.PasteKey}" Style="{StaticResource PrimaryButton}"
                                 Command="{Binding GoSubscriptionCommand}"/>
@@ -271,34 +271,34 @@
                                AllowsTransparency="True" PopupAnimation="Fade" StaysOpen="False"
                                VerticalOffset="-6" HorizontalOffset="-8"
                                IsOpen="{Binding CheckResultVisible, Mode=TwoWay}" Opened="CheckPopup_Opened">
-                            <Border Background="{StaticResource WindowBg}" CornerRadius="8" BorderBrush="{StaticResource Stroke}"
+                            <Border Background="{DynamicResource WindowBg}" CornerRadius="8" BorderBrush="{DynamicResource Stroke}"
                                     BorderThickness="1" Padding="12,10" Margin="10"
                                     MouseEnter="CheckPopup_MouseEnter" MouseLeave="CheckPopup_MouseLeave">
                                 <Border.Effect>
                                     <DropShadowEffect BlurRadius="20" ShadowDepth="2" Opacity="0.20" Color="Black"/>
                                 </Border.Effect>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Border Width="26" Height="17" CornerRadius="2.5" BorderBrush="{StaticResource Stroke}"
+                                    <Border Width="26" Height="17" CornerRadius="2.5" BorderBrush="{DynamicResource Stroke}"
                                             BorderThickness="0.7" Visibility="{Binding CheckHasFlag, Converter={StaticResource BoolVis}}">
                                         <Border.Background>
                                             <ImageBrush ImageSource="{Binding CheckFlagImage}" Stretch="Fill"/>
                                         </Border.Background>
                                     </Border>
-                                    <Border Width="26" Height="17" CornerRadius="2.5" Background="{StaticResource CardAlt}"
-                                            BorderBrush="{StaticResource Stroke}" BorderThickness="0.7"
+                                    <Border Width="26" Height="17" CornerRadius="2.5" Background="{DynamicResource CardAlt}"
+                                            BorderBrush="{DynamicResource Stroke}" BorderThickness="0.7"
                                             Visibility="{Binding CheckHasFlag, Converter={StaticResource BoolVisInv}}">
                                         <TextBlock Text="{Binding CheckLoc}" FontSize="9" FontWeight="Bold"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                   Foreground="{StaticResource TextSecondary}"/>
+                                                   Foreground="{DynamicResource TextSecondary}"/>
                                     </Border>
                                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                                         <TextBlock Text="{DynamicResource S.ExitLabel}" FontSize="10"
-                                                   Foreground="{StaticResource TextTertiary}"/>
+                                                   Foreground="{DynamicResource TextTertiary}"/>
                                         <TextBlock Text="{Binding CheckIp}" FontSize="13" FontWeight="SemiBold"
-                                                   Foreground="{StaticResource TextPrimary}"
+                                                   Foreground="{DynamicResource TextPrimary}"
                                                    Visibility="{Binding CheckBusy, Converter={StaticResource BoolVisInv}}"/>
                                         <TextBlock Text="…" FontSize="13" FontWeight="SemiBold"
-                                                   Foreground="{StaticResource TextSecondary}"
+                                                   Foreground="{DynamicResource TextSecondary}"
                                                    Visibility="{Binding CheckBusy, Converter={StaticResource BoolVis}}"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -306,7 +306,7 @@
                         </Popup>
                     </StackPanel>
                     <TextBlock Text="{Binding CoreVersion}" HorizontalAlignment="Right" VerticalAlignment="Center"
-                               FontSize="10.5" Foreground="{StaticResource TextTertiary}"/>
+                               FontSize="10.5" Foreground="{DynamicResource TextTertiary}"/>
                 </Grid>
             </Grid>
 
@@ -332,7 +332,7 @@
                              Text="{Binding AddApp.Search, UpdateSourceTrigger=PropertyChanged}"/>
                     <TextBlock Text="{DynamicResource S.SearchApp}" IsHitTestVisible="False" VerticalAlignment="Center"
                                HorizontalAlignment="Left" Margin="13,0,0,0" FontSize="13"
-                               Foreground="{StaticResource TextTertiary}">
+                               Foreground="{DynamicResource TextTertiary}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -354,9 +354,9 @@
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                             Visibility="{Binding AddApp.IsLoading, Converter={StaticResource BoolVis}}">
                     <ProgressBar IsIndeterminate="True" Width="180" Height="4" Foreground="{StaticResource Accent}"
-                                 Background="{StaticResource Stroke}" BorderThickness="0"/>
+                                 Background="{DynamicResource Stroke}" BorderThickness="0"/>
                     <TextBlock Text="{DynamicResource S.LoadingApps}" Margin="0,10,0,0" HorizontalAlignment="Center"
-                               FontSize="12.5" Foreground="{StaticResource TextSecondary}"/>
+                               FontSize="12.5" Foreground="{DynamicResource TextSecondary}"/>
                 </StackPanel>
 
                 <ListBox x:Name="RunningList"
@@ -371,13 +371,13 @@
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="ListBoxItem">
-                                        <Border x:Name="b" Background="{StaticResource Card}" CornerRadius="8"
-                                                Padding="11" BorderThickness="1" BorderBrush="{StaticResource Stroke}">
+                                        <Border x:Name="b" Background="{DynamicResource Card}" CornerRadius="8"
+                                                Padding="11" BorderThickness="1" BorderBrush="{DynamicResource Stroke}">
                                             <ContentPresenter/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="b" Property="Background" Value="{StaticResource CardHover}"/>
+                                                <Setter TargetName="b" Property="Background" Value="{DynamicResource CardHover}"/>
                                             </Trigger>
                                             <Trigger Property="IsSelected" Value="True">
                                                 <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource Accent}"/>
@@ -400,7 +400,7 @@
                                 <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="13"
                                                TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding ProcessName}" Foreground="{StaticResource TextSecondary}"
+                                    <TextBlock Text="{Binding ProcessName}" Foreground="{DynamicResource TextSecondary}"
                                                FontSize="11"/>
                                 </StackPanel>
                             </Grid>
@@ -416,9 +416,9 @@
                             Command="{Binding AddSelectedRunningCommand}"
                             IsEnabled="{Binding AddApp.Selected, Converter={StaticResource BoolVis}}"/>
 
-                    <Border Height="1" Background="{StaticResource Stroke}" Margin="0,14,0,10"/>
+                    <Border Height="1" Background="{DynamicResource Stroke}" Margin="0,14,0,10"/>
                     <TextBlock Text="{DynamicResource S.SiteHint}"
-                               FontSize="11.5" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+                               FontSize="11.5" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
                     <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -430,7 +430,7 @@
                                      Text="{Binding AddSiteInput, UpdateSourceTrigger=PropertyChanged}"/>
                             <TextBlock Text="youtube.com" IsHitTestVisible="False" VerticalAlignment="Center"
                                        HorizontalAlignment="Left" Margin="13,0,0,0" FontSize="13"
-                                       Foreground="{StaticResource TextTertiary}">
+                                       Foreground="{DynamicResource TextTertiary}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -468,64 +468,64 @@
                 </StackPanel>
 
                 <ScrollViewer Grid.Row="1" Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
-                    <Border Background="{StaticResource Card}" CornerRadius="8" BorderBrush="{StaticResource Stroke}"
+                    <Border Background="{DynamicResource Card}" CornerRadius="8" BorderBrush="{DynamicResource Stroke}"
                             BorderThickness="1">
                         <StackPanel>
                             <Grid Margin="14,13">
                                 <StackPanel Margin="0,0,54,0">
                                     <TextBlock Text="{DynamicResource S.StartWin}" FontSize="13" FontWeight="SemiBold"/>
                                     <TextBlock Text="{DynamicResource S.StartWinSub}" FontSize="11.5"
-                                               Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+                                               Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
                                               VerticalAlignment="Center" IsChecked="{Binding StartWithWindows}"/>
                             </Grid>
-                            <Border Height="1" Background="{StaticResource Stroke}"/>
+                            <Border Height="1" Background="{DynamicResource Stroke}"/>
                             <Grid Margin="14,13">
                                 <StackPanel Margin="0,0,54,0">
                                     <TextBlock Text="{DynamicResource S.AutoConnect}" FontSize="13" FontWeight="SemiBold"/>
                                     <TextBlock Text="{DynamicResource S.AutoConnectSub}" FontSize="11.5"
-                                               Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+                                               Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
                                               VerticalAlignment="Center" IsChecked="{Binding AutoConnectOnLaunch}"/>
                             </Grid>
-                            <Border Height="1" Background="{StaticResource Stroke}"/>
+                            <Border Height="1" Background="{DynamicResource Stroke}"/>
                             <Grid Margin="14,13">
                                 <StackPanel Margin="0,0,54,0">
                                     <TextBlock Text="Kill-switch" FontSize="13" FontWeight="SemiBold"/>
                                     <TextBlock Text="{DynamicResource S.KillSwitchSub}" FontSize="11.5"
-                                               Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+                                               Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
                                               VerticalAlignment="Center" IsChecked="{Binding KillSwitch}"/>
                             </Grid>
-                            <Border Height="1" Background="{StaticResource Stroke}"/>
+                            <Border Height="1" Background="{DynamicResource Stroke}"/>
                             <Grid Margin="14,13">
                                 <StackPanel Margin="0,0,54,0">
                                     <TextBlock Text="{DynamicResource S.DnsVpn}" FontSize="13" FontWeight="SemiBold"/>
                                     <TextBlock Text="{DynamicResource S.DnsVpnSub}" FontSize="11.5"
-                                               Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+                                               Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
                                               VerticalAlignment="Center" IsChecked="{Binding ProxyDns}"/>
                             </Grid>
-                            <Border Height="1" Background="{StaticResource Stroke}"/>
+                            <Border Height="1" Background="{DynamicResource Stroke}"/>
                             <Grid Margin="14,13">
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock Text="{DynamicResource S.LogLevel}" FontSize="13" FontWeight="SemiBold"/>
                                     <TextBlock Text="{DynamicResource S.LogLevelSub}" FontSize="11.5"
-                                               Foreground="{StaticResource TextSecondary}"/>
+                                               Foreground="{DynamicResource TextSecondary}"/>
                                 </StackPanel>
                                 <ComboBox Width="130" HorizontalAlignment="Right" VerticalAlignment="Center"
                                           ItemsSource="{Binding LogLevels}" SelectedItem="{Binding LogLevel}"/>
                             </Grid>
-                            <Border Height="1" Background="{StaticResource Stroke}"/>
+                            <Border Height="1" Background="{DynamicResource Stroke}"/>
                             <Grid Margin="14,13">
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock Text="{DynamicResource S.Language}" FontSize="13" FontWeight="SemiBold"/>
                                     <TextBlock Text="{DynamicResource S.LanguageSub}" FontSize="11.5"
-                                               Foreground="{StaticResource TextSecondary}"/>
+                                               Foreground="{DynamicResource TextSecondary}"/>
                                 </StackPanel>
                                 <ComboBox Width="130" HorizontalAlignment="Right" VerticalAlignment="Center"
                                           SelectedValuePath="Tag" SelectedValue="{Binding Language}">
@@ -557,7 +557,7 @@
                 </StackPanel>
 
                 <TextBlock Grid.Row="1" Margin="2,14,0,0" TextWrapping="Wrap" FontSize="12.5"
-                           Foreground="{StaticResource TextSecondary}"
+                           Foreground="{DynamicResource TextSecondary}"
                            Text="{DynamicResource S.SubDesc}"/>
 
                 <Grid Grid.Row="2" Margin="0,12,0,0">
@@ -566,7 +566,7 @@
                              TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top"
                              VerticalScrollBarVisibility="Auto"/>
                     <TextBlock Text="https://…  |  vless://…" IsHitTestVisible="False" VerticalAlignment="Top"
-                               Margin="13,10,0,0" FontSize="13" Foreground="{StaticResource TextTertiary}">
+                               Margin="13,10,0,0" FontSize="13" Foreground="{DynamicResource TextTertiary}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -581,7 +581,7 @@
                 </Grid>
 
                 <TextBlock Grid.Row="3" Text="{Binding StatusDetail}" Margin="2,10,0,0" TextWrapping="Wrap"
-                           FontSize="11.5" Foreground="{StaticResource TextSecondary}"/>
+                           FontSize="11.5" Foreground="{DynamicResource TextSecondary}"/>
 
                 <Button Grid.Row="4" Content="{DynamicResource S.LoadServers}" Style="{StaticResource PrimaryButton}"
                         Margin="0,12,0,0" Command="{Binding LoadSubscriptionCommand}"/>

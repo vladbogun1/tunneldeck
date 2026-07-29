@@ -35,6 +35,7 @@ public partial class App : Application
         if (!isNew) { Shutdown(); return; }
 
         Paths.EnsureDirs();
+        ThemeService.Init();   // follow the Windows light/dark setting
 
         _vm = new MainViewModel();
         _vm.ConnectionChanged += (_, status) => { UpdateTray(status); Notify(status); };

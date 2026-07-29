@@ -27,6 +27,11 @@
             <SolidColorBrush x:Key="Amber"         Color="#9D5D00"/>
             <SolidColorBrush x:Key="Red"           Color="#C42B1C"/>
             <SolidColorBrush x:Key="RedSoft"       Color="#FDE7E9"/>
+            <SolidColorBrush x:Key="AccentSoft"    Color="#E7F1FF"/>
+            <SolidColorBrush x:Key="Hover"         Color="#EDEDED"/>
+            <SolidColorBrush x:Key="HoverStrong"   Color="#E4E4E4"/>
+            <SolidColorBrush x:Key="SwitchOff"     Color="#E8E8E8"/>
+            <SolidColorBrush x:Key="ScrollThumb"   Color="#C2C2C2"/>
 
             <!-- ================= Base text ================= -->
             <!-- NOTE: intentionally NOT setting Foreground here. An implicit TextBlock
@@ -107,9 +112,9 @@
 
             <!-- ================= Secondary (subtle) button ================= -->
             <Style x:Key="SecondaryButton" TargetType="Button">
-                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-                <Setter Property="Background" Value="{StaticResource Card}"/>
-                <Setter Property="BorderBrush" Value="{StaticResource StrokeStrong}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+                <Setter Property="Background" Value="{DynamicResource Card}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource StrokeStrong}"/>
                 <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
                 <Setter Property="FontSize" Value="13"/>
@@ -126,7 +131,7 @@
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="b" Property="Background" Value="{StaticResource CardHover}"/>
+                                    <Setter TargetName="b" Property="Background" Value="{DynamicResource CardHover}"/>
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
                                     <Setter TargetName="b" Property="Opacity" Value="0.4"/>
@@ -139,7 +144,7 @@
 
             <!-- ================= Icon / ghost button ================= -->
             <Style x:Key="IconButton" TargetType="Button">
-                <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
                 <Setter Property="FontSize" Value="14"/>
@@ -154,11 +159,11 @@
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="b" Property="Background" Value="#EDEDED"/>
-                                    <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                                    <Setter TargetName="b" Property="Background" Value="{DynamicResource Hover}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="b" Property="Background" Value="#E4E4E4"/>
+                                    <Setter TargetName="b" Property="Background" Value="{DynamicResource HoverStrong}"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -199,13 +204,13 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="ToggleButton">
                             <Border x:Name="track" CornerRadius="11" Background="Transparent"
-                                    BorderBrush="{StaticResource TextTertiary}" BorderThickness="1.5">
-                                <Ellipse x:Name="knob" Width="12" Height="12" Fill="{StaticResource TextSecondary}"
+                                    BorderBrush="{DynamicResource TextTertiary}" BorderThickness="1.5">
+                                <Ellipse x:Name="knob" Width="12" Height="12" Fill="{DynamicResource TextSecondary}"
                                          HorizontalAlignment="Left" Margin="4,0,0,0"/>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="track" Property="Background" Value="#E8E8E8"/>
+                                    <Setter TargetName="track" Property="Background" Value="{DynamicResource SwitchOff}"/>
                                 </Trigger>
                                 <Trigger Property="IsChecked" Value="True">
                                     <Setter TargetName="track" Property="Background" Value="{StaticResource Accent}"/>
@@ -231,10 +236,10 @@
 
             <!-- ================= Text input ================= -->
             <Style x:Key="Input" TargetType="TextBox">
-                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-                <Setter Property="CaretBrush" Value="{StaticResource TextPrimary}"/>
-                <Setter Property="Background" Value="{StaticResource Card}"/>
-                <Setter Property="BorderBrush" Value="{StaticResource StrokeStrong}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+                <Setter Property="CaretBrush" Value="{DynamicResource TextPrimary}"/>
+                <Setter Property="Background" Value="{DynamicResource Card}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource StrokeStrong}"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
                 <Setter Property="FontSize" Value="13"/>
@@ -272,7 +277,7 @@
                                         <Thumb>
                                             <Thumb.Template>
                                                 <ControlTemplate TargetType="Thumb">
-                                                    <Border CornerRadius="4" Background="#C2C2C2" Margin="2,0"/>
+                                                    <Border CornerRadius="4" Background="{DynamicResource ScrollThumb}" Margin="2,0"/>
                                                 </ControlTemplate>
                                             </Thumb.Template>
                                         </Thumb>
@@ -301,7 +306,7 @@
                 </Setter>
             </Style>
             <Style TargetType="ComboBox">
-                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
                 <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
                 <Setter Property="FontSize" Value="13"/>
                 <Setter Property="Height" Value="38"/>
@@ -309,20 +314,20 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="ComboBox">
                             <Grid>
-                                <Border x:Name="bd" Background="{StaticResource Card}" CornerRadius="7"
-                                        BorderBrush="{StaticResource StrokeStrong}" BorderThickness="1"/>
+                                <Border x:Name="bd" Background="{DynamicResource Card}" CornerRadius="7"
+                                        BorderBrush="{DynamicResource StrokeStrong}" BorderThickness="1"/>
                                 <ContentPresenter Content="{TemplateBinding SelectionBoxItem}"
                                                   ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                                   Margin="12,0,34,0" VerticalAlignment="Center" HorizontalAlignment="Left"/>
-                                <Path x:Name="arrow" Data="M0,0 L4,4 L8,0" Stroke="{StaticResource TextSecondary}"
+                                <Path x:Name="arrow" Data="M0,0 L4,4 L8,0" Stroke="{DynamicResource TextSecondary}"
                                       StrokeThickness="1.5" HorizontalAlignment="Right" VerticalAlignment="Center"
                                       Margin="0,0,13,0"/>
                                 <ToggleButton Style="{StaticResource ComboToggle}" Focusable="False"
                                               IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
                                 <Popup x:Name="PART_Popup" AllowsTransparency="True" Placement="Bottom"
                                        IsOpen="{TemplateBinding IsDropDownOpen}" PopupAnimation="Slide">
-                                    <Border Background="{StaticResource Card}" CornerRadius="7" Margin="0,4,0,0"
-                                            BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                                    <Border Background="{DynamicResource Card}" CornerRadius="7" Margin="0,4,0,0"
+                                            BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
                                             MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                                         <Border.Effect>
                                             <DropShadowEffect BlurRadius="16" ShadowDepth="2" Opacity="0.18" Color="Black"/>
@@ -335,7 +340,7 @@
                             </Grid>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource CardHover}"/>
+                                    <Setter TargetName="bd" Property="Background" Value="{DynamicResource CardHover}"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -343,7 +348,7 @@
                 </Setter>
             </Style>
             <Style TargetType="ComboBoxItem">
-                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
                 <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
                 <Setter Property="FontSize" Value="13"/>
                 <Setter Property="Padding" Value="10,8"/>
@@ -355,7 +360,7 @@
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsHighlighted" Value="True">
-                                    <Setter TargetName="b" Property="Background" Value="{StaticResource CardHover}"/>
+                                    <Setter TargetName="b" Property="Background" Value="{DynamicResource CardHover}"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
