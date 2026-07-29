@@ -57,12 +57,12 @@ When you add a website, TunnelDeck routes your browsers through a second local p
 
 ## Install
 
-1. Download **`TunnelDeck-Setup-1.2.3.exe`** from the [latest release](../../releases/latest) and run it.
+1. Download **`TunnelDeck-Setup-1.3.0.exe`** from the [latest release](../../releases/latest) and run it.
    The installer sets up the app, a desktop + Start-menu shortcut, and the required network-filter driver.
 2. Launch TunnelDeck (it opens from the tray icon).
 3. Paste your **subscription key**, pick a server, add the apps/sites you want, and hit **Connect**.
 
-> **Administrator & driver.** A per-app VPN needs to intercept traffic, so the app runs elevated and installs the **Windows Packet Filter** driver during setup. First launch also downloads the sing-box core (~12 MB).
+> **Administrator & driver.** A per-app VPN needs to intercept traffic, so the app runs elevated and installs the **Windows Packet Filter** driver during setup. The installer registers a *highest-privileges* scheduled task, so after install TunnelDeck launches elevated **without a UAC prompt** every time. First launch also downloads the sing-box core (~12 MB).
 
 > **SmartScreen note.** The build isn't signed by a trusted CA, so Windows SmartScreen may warn — click **More info → Run anyway**.
 
@@ -71,6 +71,7 @@ When you add a website, TunnelDeck routes your browsers through a second local p
 - **Shell:** C# / .NET 8 **WPF** tray app with a borderless flyout window.
 - **Tunnel core:** [sing-box](https://sing-box.sagernet.org/) runs as a local **SOCKS/mixed proxy** (no system TUN). It speaks **VLESS/Reality** (and VMess/Trojan/Shadowsocks) to your server.
 - **Per-app redirect:** [ProxiFyre](https://github.com/wiresock/proxifyre) (built on the **Windows Packet Filter** driver) transparently redirects the traffic of the selected processes into the local proxy — TCP and UDP.
+- **Elevation without UAC:** the app ships `asInvoker`; a highest-privileges scheduled task (registered by the installer) launches it elevated on demand, so there's no UAC prompt on every start.
 - **Result:** because nothing rewrites the system routing table, connecting/disconnecting only starts/stops local processes, leaving all other apps untouched.
 
 ## Build from source
@@ -79,11 +80,13 @@ When you add a website, TunnelDeck routes your browsers through a second local p
 dotnet build TunnelDeck.sln -c Release
 ```
 
-Portable single-file build:
+The installer bundles a self-contained build produced by:
 
 ```bash
 dotnet publish src/TunnelDeck/TunnelDeck.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o dist
 ```
+
+> TunnelDeck is meant to be installed — the elevation-without-UAC scheduled task and the packet-filter driver are set up by the installer. Running the bare `.exe` isn't supported.
 
 ## Installer
 
@@ -94,7 +97,7 @@ installs the Windows Packet Filter driver, creates shortcuts, and adds an uninst
 
 ## Limitations
 
-- Requires **Administrator** (driver-based traffic interception).
+- Needs **Administrator** rights (driver-based traffic interception) — but there's **no per-launch UAC prompt**: a highest-privileges scheduled task created at install elevates silently. The account must be an administrator.
 - Per-site routing covers **installed** browsers; portable/unregistered browsers aren't auto-detected.
 - Speed is reported as **total tunnel throughput** — per-app byte accounting isn't available once traffic is redirected through the proxy.
 

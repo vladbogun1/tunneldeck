@@ -14,6 +14,7 @@ namespace TunnelDeck;
 public partial class App : Application
 {
     private Mutex? _singleInstance;
+    private EventWaitHandle? _showSignal;
     private TaskbarIcon? _tray;
     private MainViewModel? _vm;
     private FlyoutWindow? _flyout;
@@ -30,9 +31,33 @@ public partial class App : Application
 
         // Test hook: a suffix lets a debug instance coexist with the installed app.
         var instance = Environment.GetEnvironmentVariable("TUNNELDECK_INSTANCE");
-        var mutexName = string.IsNullOrEmpty(instance) ? "TunnelDeck.SingleInstance" : $"TunnelDeck.SingleInstance.{instance}";
+        var testMode = !string.IsNullOrEmpty(instance);
+
+        // Elevate without a UAC prompt: if we're not admin, hand off to the scheduled
+        // task (which runs this exe with highest privileges) and exit. Skipped in test
+        // mode so debug runs don't relaunch the installed copy.
+        if (!testMode && !ElevationService.IsElevated() && ElevationService.RelaunchElevated())
+        {
+            Shutdown();
+            return;
+        }
+
+        var mutexName = testMode ? $"TunnelDeck.SingleInstance.{instance}" : "TunnelDeck.SingleInstance";
+        var signalName = mutexName + ".Show";
         _singleInstance = new Mutex(true, mutexName, out bool isNew);
-        if (!isNew) { Shutdown(); return; }
+        if (!isNew)
+        {
+            // Another instance is already running — ask it to surface, then exit.
+            try { if (EventWaitHandle.TryOpenExisting(signalName, out var ev)) { ev.Set(); ev.Dispose(); } }
+            catch { }
+            Shutdown();
+            return;
+        }
+
+        // Listen for "show" pokes from later launches (e.g. clicking the shortcut
+        // while the app is minimized in the tray).
+        _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, signalName);
+        StartShowSignalListener();
 
         Paths.EnsureDirs();
         ThemeService.Init();   // follow the Windows light/dark setting
@@ -206,6 +231,24 @@ public partial class App : Application
         _flyout.Activate();
         _flyout.Topmost = true;
         _flyout.Focus();
+    }
+
+    /// <summary>Background waiter: a later launch pokes this to surface the window.</summary>
+    private void StartShowSignalListener()
+    {
+        var t = new Thread(() =>
+        {
+            while (!_shuttingDown && _showSignal is not null)
+            {
+                bool poked;
+                try { poked = _showSignal.WaitOne(1000); }
+                catch { break; }
+                if (!poked || _shuttingDown) continue;
+                try { Dispatcher.BeginInvoke(new Action(ShowFlyout)); } catch { }
+            }
+        })
+        { IsBackground = true, Name = "TunnelDeck.ShowSignal" };
+        t.Start();
     }
 
     private void OnDispatcherException(object sender, DispatcherUnhandledExceptionEventArgs e)
