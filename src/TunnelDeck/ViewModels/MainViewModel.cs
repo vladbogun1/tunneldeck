@@ -17,6 +17,8 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly CoreBootstrapper _bootstrap = new();
     private readonly CoreController _core = new();
     private readonly TrafficStatsService _stats = new();
+    private readonly UpdateService _update = new();
+    private UpdateInfo? _pendingUpdate;
 
     private AppState _state = new();
     private bool _coreReady;
@@ -33,6 +35,12 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _showSpeed;
     [ObservableProperty] private string _totalDownText = "0 Б/с";
     [ObservableProperty] private string _totalUpText = "0 Б/с";
+
+    // Auto-update
+    [ObservableProperty] private bool _updateAvailable;
+    [ObservableProperty] private string _updateVersionText = "";
+    [ObservableProperty] private bool _isUpdating;
+    [ObservableProperty] private string _updateStatus = "";
 
     [ObservableProperty] private Page _currentPage = Page.Main;
     [ObservableProperty] private AddAppViewModel? _addApp;
@@ -150,6 +158,45 @@ public sealed partial class MainViewModel : ObservableObject
 
         if (_coreReady && _state.Settings.AutoConnectOnLaunch && HasSubscription)
             await ConnectAsync();
+
+        _ = CheckForUpdateAsync();
+    }
+
+    private async Task CheckForUpdateAsync()
+    {
+        try
+        {
+            var info = await _update.CheckAsync();
+            if (info is not null)
+                OnUi(() =>
+                {
+                    _pendingUpdate = info;
+                    UpdateVersionText = $"Доступно обновление {info.Version}";
+                    UpdateAvailable = true;
+                });
+        }
+        catch { /* offline / rate-limited — ignore */ }
+    }
+
+    [RelayCommand]
+    private async Task UpdateNowAsync()
+    {
+        if (_pendingUpdate is null || IsUpdating) return;
+        try
+        {
+            IsUpdating = true;
+            var progress = new Progress<int>(p => OnUi(() => UpdateStatus = $"Загрузка обновления… {p}%"));
+            var path = await _update.DownloadInstallerAsync(_pendingUpdate, progress);
+            UpdateStatus = "Запуск установки…";
+            await ShutdownAsync();
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = path, UseShellExecute = true });
+            Application.Current?.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus = "Ошибка обновления: " + ex.Message;
+            IsUpdating = false;
+        }
     }
 
     private void RebuildFromState()

@@ -46,6 +46,27 @@
                 <Border Grid.Row="1" Background="{StaticResource Card}" CornerRadius="8" Padding="16"
                         Margin="0,14,0,0" BorderBrush="{StaticResource Stroke}" BorderThickness="1">
                     <StackPanel>
+                        <!-- Update banner -->
+                        <Border Background="#E7F1FF" BorderBrush="{StaticResource Accent}" BorderThickness="1"
+                                CornerRadius="7" Padding="10,8" Margin="0,0,0,12"
+                                Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolVis}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0">
+                                    <TextBlock Text="{Binding UpdateVersionText}" FontSize="12.5" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding UpdateStatus}" FontSize="11" Foreground="{StaticResource TextSecondary}"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding UpdateStatus, Converter={StaticResource BoolVis}}"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="Обновить" Style="{StaticResource PrimaryButton}"
+                                        Height="30" Padding="14,0" VerticalAlignment="Center"
+                                        Command="{Binding UpdateNowCommand}"/>
+                            </Grid>
+                        </Border>
+
                         <TextBlock Text="{Binding StatusText}" FontSize="16" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding StatusDetail}" Foreground="{StaticResource TextSecondary}"
                                    FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"
