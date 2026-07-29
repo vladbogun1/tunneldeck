@@ -1,18 +1,26 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using TunnelDeck.Models;
+using TunnelDeck.Services;
 
 namespace TunnelDeck.ViewModels;
 
-/// <summary>A server row in the dropdown, with a live colored ping badge.</summary>
+/// <summary>A server row in the dropdown, with a country flag and a live colored ping badge.</summary>
 public sealed partial class ServerItemViewModel : ObservableObject
 {
     public ServerConfig Config { get; }
     public string Name { get; }
 
+    /// <summary>Country flag for this server (null if the country can't be inferred).</summary>
+    public System.Windows.Media.ImageSource? FlagImage { get; }
+    public bool HasFlag => FlagImage is not null;
+    public string CountryCode { get; }
+
     public ServerItemViewModel(ServerConfig config)
     {
         Config = config;
         Name = config.Name;
+        CountryCode = CountryCodes.FromName(config.Name);
+        FlagImage = FlagFactory.For(CountryCode);
     }
 
     // -2 unknown (blank), -3 measuring (…), -1 failed (—), >=0 latency in ms.
