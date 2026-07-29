@@ -49,6 +49,11 @@ Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"
 Name: "{group}\Удалить {#AppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
+[Registry]
+; Autostart is a scheduled task now — drop any stale Run entry from pre-1.3.0 installs.
+Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "TunnelDeck"; Flags: deletevalue
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "TunnelDeck"; Flags: deletevalue
+
 [Run]
 ; Silently install the Windows Packet Filter driver (required by ProxiFyre).
 Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\Windows.Packet.Filter.x64.msi"" /qn /norestart"; \
