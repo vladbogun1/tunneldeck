@@ -6,7 +6,7 @@
 ;   assets\Windows.Packet.Filter.x64.msi        (network filter driver)
 
 #define AppName "TunnelDeck"
-#define AppVersion "1.2.3"
+#define AppVersion "1.3.0"
 #define AppPublisher "vladbogun1"
 #define AppExe "TunnelDeck.exe"
 
@@ -40,34 +40,52 @@ Name: "autostart"; Description: "Запускать TunnelDeck при входе
 Source: "..\dist\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "assets\proxifyre\*"; DestDir: "{app}\proxifyre"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "assets\Windows.Packet.Filter.x64.msi"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "assets\register-tasks.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
+; Shortcuts point at the exe (asInvoker). Double-click starts a non-elevated launcher
+; that triggers the scheduled task → an elevated instance, with no UAC prompt.
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"
 Name: "{group}\Удалить {#AppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Registry]
-Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; \
-  ValueName: "TunnelDeck"; ValueData: """{app}\{#AppExe}"" --tray"; Flags: uninsdeletevalue; Tasks: autostart
+; Autostart is a scheduled task now — drop any stale Run entry from pre-1.3.0 installs.
+Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "TunnelDeck"; Flags: deletevalue
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "TunnelDeck"; Flags: deletevalue
 
 [Run]
 ; Silently install the Windows Packet Filter driver (required by ProxiFyre).
 Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\Windows.Packet.Filter.x64.msi"" /qn /norestart"; \
   StatusMsg: "Установка сетевого драйвера…"; Flags: waituntilterminated
-; shellexec so the requireAdministrator app launches via ShellExecute (UAC) instead of
-; CreateProcess (which fails with error 740 "operation requires elevation").
-Filename: "{app}\{#AppExe}"; Description: "Запустить {#AppName}"; Flags: nowait postinstall skipifsilent shellexec
+; Register the elevation tasks (on-demand + optional logon autostart) so launches skip UAC.
+Filename: "powershell.exe"; \
+  Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\register-tasks.ps1"" -ExePath ""{app}\{#AppExe}""{code:AutostartArg}"; \
+  StatusMsg: "Настройка запуска без запроса прав…"; Flags: runhidden waituntilterminated
+; First launch (elevated child of the installer, so no prompt).
+Filename: "{app}\{#AppExe}"; Description: "Запустить {#AppName}"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
-; Stop the app before uninstalling.
+; Stop the app and remove the scheduled tasks before uninstalling.
 Filename: "taskkill.exe"; Parameters: "/f /im {#AppExe} /t"; Flags: runhidden; RunOnceId: "killapp"
 Filename: "taskkill.exe"; Parameters: "/f /im ProxiFyre.exe /t"; Flags: runhidden; RunOnceId: "killpf"
 Filename: "taskkill.exe"; Parameters: "/f /im sing-box.exe /t"; Flags: runhidden; RunOnceId: "killsb"
+Filename: "schtasks.exe"; Parameters: "/delete /tn ""TunnelDeck"" /f"; Flags: runhidden; RunOnceId: "deltask1"
+Filename: "schtasks.exe"; Parameters: "/delete /tn ""TunnelDeck-Startup"" /f"; Flags: runhidden; RunOnceId: "deltask2"
 
 [Messages]
 russian.WelcomeLabel2=Программа установит [name/ver] на ваш компьютер.%n%nTunnelDeck направляет через VPN только выбранные вами приложения. Будет установлен сетевой драйвер (Windows Packet Filter), необходимый для работы.
 
 [Code]
+// Appends " -Autostart" to the task-registration command when the autostart task is ticked.
+function AutostartArg(Param: String): String;
+begin
+  if WizardIsTaskSelected('autostart') then
+    Result := ' -Autostart'
+  else
+    Result := '';
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
