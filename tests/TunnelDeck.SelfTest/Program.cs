@@ -89,6 +89,15 @@ Check("xray: fingerprint firefox", xServers[0].Fingerprint == "firefox");
 Check("xray: flow", xServers[0].Flow == "xtls-rprx-vision");
 
 // Build a sing-box config from the real-shaped server and export for `sing-box check`.
+// Proxy-mode (ProxiFyre) config with sites — validate the split inbound + reject/domain rules.
+var proxyJson = SingBoxConfigBuilder.BuildProxyMode(xServers[0], new AppSettings(), new[] { "speedtest.net", "2ip.ru" });
+Check("proxy: mixed inbound", proxyJson.Contains("\"type\": \"mixed\""));
+Check("proxy: split inbound 24809", proxyJson.Contains("24809"));
+Check("proxy: site domain routed", proxyJson.Contains("2ip.ru"));
+Check("proxy: quic reject", proxyJson.Contains("\"action\": \"reject\""));
+var proxyOut = Environment.GetEnvironmentVariable("SELFTEST_PROXY_CONFIG_OUT");
+if (!string.IsNullOrWhiteSpace(proxyOut)) System.IO.File.WriteAllText(proxyOut, proxyJson);
+
 var xJson = SingBoxConfigBuilder.Build(xServers[0], apps, new AppSettings());
 var xOut = Environment.GetEnvironmentVariable("SELFTEST_XRAY_CONFIG_OUT");
 if (!string.IsNullOrWhiteSpace(xOut))

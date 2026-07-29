@@ -51,8 +51,8 @@ public sealed class CoreController
         IReadOnlyList<string>? sites = null)
     {
         _server = server;
-        _apps = apps;
-        _sites = sites ?? Array.Empty<string>();
+        _apps = apps.ToList();                                   // snapshot (avoid aliasing state lists)
+        _sites = (sites ?? Array.Empty<string>()).ToList();
         _settings = settings;
         _currentServerId = server.Id;
 
@@ -132,7 +132,7 @@ public sealed class CoreController
     {
         if (!IsRunning && !_wantRunning) return;
 
-        var siteList = sites ?? Array.Empty<string>();
+        var siteList = (sites ?? Array.Empty<string>()).ToList();
 
         // Adding/removing a site changes the sing-box config (split inbound), so the
         // core must restart too; an app-only change just restarts ProxiFyre.
@@ -143,7 +143,7 @@ public sealed class CoreController
             return;
         }
 
-        _apps = apps;
+        _apps = apps.ToList();
         _settings = settings;
         try
         {

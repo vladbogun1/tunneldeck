@@ -64,6 +64,12 @@ public static class SingBoxConfigBuilder
         routeRules.AddRange(ServerDomainRule(server, "outbound", "direct"));
         if (siteList.Count > 0)
         {
+            // Force browser QUIC (HTTP/3, UDP 443) to fall back to TCP so the destination
+            // domain can be read reliably for domain-based routing.
+            routeRules.Add(new Dictionary<string, object?>
+            {
+                ["inbound"] = new[] { "split" }, ["network"] = "udp", ["port"] = 443, ["action"] = "reject"
+            });
             // Only the chosen domains from the "split" (browser) inbound take the VPN.
             routeRules.Add(new Dictionary<string, object?>
             {
