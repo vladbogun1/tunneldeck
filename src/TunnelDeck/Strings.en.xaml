@@ -38,6 +38,10 @@
     <s:String x:Key="S.LoadServers">Load servers</s:String>
     <s:String x:Key="S.TipSettings">Settings</s:String>
     <s:String x:Key="S.TipRemove">Remove</s:String>
+    <s:String x:Key="S.TipMinimize">Minimize to tray</s:String>
+    <s:String x:Key="S.WhatsNew">What's new</s:String>
+    <s:String x:Key="S.ExitLabel">Exit IP</s:String>
+    <s:String x:Key="S.Session">Session</s:String>
     <s:String x:Key="S.LangAuto">System</s:String>
 
     <s:String x:Key="S.St.Connected">Connected</s:String>

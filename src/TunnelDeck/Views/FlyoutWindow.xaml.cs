@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 using TunnelDeck.ViewModels;
 
 namespace TunnelDeck.Views;
@@ -9,18 +10,9 @@ public partial class FlyoutWindow : Window
     public FlyoutWindow()
     {
         InitializeComponent();
-        Deactivated += OnDeactivated;
-    }
-
-    private void OnDeactivated(object? sender, EventArgs e)
-    {
-        // Don't hide while a native OS dialog (file picker) is in front.
-        if (FileDialogService.DialogOpen) return;
-        // Test hook: keep the window visible for screenshots/verification.
-        if (Environment.GetEnvironmentVariable("TUNNELDECK_NOHIDE") == "1") return;
-        Hide();
-        if (DataContext is MainViewModel vm)
-            vm.CurrentPage = Page.Main;
+        // The window no longer auto-hides on focus loss, so you can watch it while
+        // browsing. It hides only via the minimize button or the tray icon.
+        IsVisibleChanged += (_, e) => { if (e.NewValue is true) FadeIn(); };
     }
 
     /// <summary>Anchor the flyout to the bottom-right, just above the tray.</summary>
@@ -30,6 +22,22 @@ public partial class FlyoutWindow : Window
         Left = area.Right - Width - 4;
         Top = area.Bottom - Height - 4;
     }
+
+    private void FadeIn()
+    {
+        BeginAnimation(OpacityProperty, null);
+        Opacity = 0;
+        BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, new Duration(TimeSpan.FromMilliseconds(150))));
+    }
+
+    /// <summary>Hide to tray (via the minimize button) and reset to the main page.</summary>
+    public void MinimizeToTray()
+    {
+        Hide();
+        if (DataContext is MainViewModel vm) vm.CurrentPage = Page.Main;
+    }
+
+    private void Minimize_Click(object sender, RoutedEventArgs e) => MinimizeToTray();
 
     private void RunningList_DoubleClick(object sender, MouseButtonEventArgs e)
     {

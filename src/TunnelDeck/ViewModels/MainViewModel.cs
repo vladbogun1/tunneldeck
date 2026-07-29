@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Net;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TunnelDeck.Models;
@@ -37,6 +38,20 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _showSpeed;
     [ObservableProperty] private string _totalDownText = "0 Б/с";
     [ObservableProperty] private string _totalUpText = "0 Б/с";
+
+    // Session duration + cumulative traffic (while connected)
+    private readonly DispatcherTimer _sessionTimer;
+    private DateTime _sessionStart;
+    [ObservableProperty] private bool _showDuration;
+    [ObservableProperty] private string _sessionDurationText = "00:00:00";
+    [ObservableProperty] private string _sessionDownText = "0 Б";
+    [ObservableProperty] private string _sessionUpText = "0 Б";
+
+    // Check result mini-plate (exit IP + flag)
+    [ObservableProperty] private bool _checkResultVisible;
+    [ObservableProperty] private string _checkIp = "";
+    [ObservableProperty] private string _checkFlag = "";
+    [ObservableProperty] private string _checkLoc = "";
 
     // Auto-update
     [ObservableProperty] private bool _updateAvailable;
@@ -131,7 +146,16 @@ public sealed partial class MainViewModel : ObservableObject
         {
             TotalUpText = TrafficStatsService.Format(s.up);
             TotalDownText = TrafficStatsService.Format(s.down);
+            SessionUpText = TrafficStatsService.FormatBytes(s.sessUp);
+            SessionDownText = TrafficStatsService.FormatBytes(s.sessDown);
         });
+
+        _sessionTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _sessionTimer.Tick += (_, _) =>
+        {
+            var t = DateTime.UtcNow - _sessionStart;
+            SessionDurationText = $"{(int)t.TotalHours:00}:{t.Minutes:00}:{t.Seconds:00}";
+        };
 
         Loc.Changed += (_, _) => OnUi(() =>
         {
@@ -144,6 +168,12 @@ public sealed partial class MainViewModel : ObservableObject
     {
         ShowSpeed = true;
         _stats.Start();
+
+        _sessionStart = DateTime.UtcNow;
+        SessionDurationText = "00:00:00";
+        SessionDownText = SessionUpText = "0 Б";
+        ShowDuration = true;
+        _sessionTimer.Start();
     }
 
     private void StopStats()
@@ -151,6 +181,12 @@ public sealed partial class MainViewModel : ObservableObject
         _stats.Stop();
         ShowSpeed = false;
         TotalUpText = TotalDownText = "0 Б/с";
+
+        _sessionTimer.Stop();
+        ShowDuration = false;
+
+        // Reset the check plate when the tunnel drops.
+        CheckResultVisible = false;
     }
 
     public event EventHandler<ConnectionStatus>? ConnectionChanged;
@@ -223,6 +259,16 @@ public sealed partial class MainViewModel : ObservableObject
             UpdateStatus = "Ошибка обновления: " + ex.Message;
             IsUpdating = false;
         }
+    }
+
+    /// <summary>Open the GitHub release page for the pending update in the browser.</summary>
+    [RelayCommand]
+    private void OpenReleaseNotes()
+    {
+        var url = _pendingUpdate?.HtmlUrl;
+        if (string.IsNullOrWhiteSpace(url)) return;
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = url, UseShellExecute = true }); }
+        catch { }
     }
 
     private void RebuildFromState()
@@ -333,6 +379,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (!IsConnected) { StatusDetail = "Сначала подключитесь."; return; }
         try
         {
+            CheckResultVisible = false;
             StatusDetail = "Проверка выхода…";
             var handler = new HttpClientHandler
             {
@@ -344,14 +391,26 @@ public sealed partial class MainViewModel : ObservableObject
             var trace = await http.GetStringAsync("https://www.cloudflare.com/cdn-cgi/trace");
             var ip = TraceField(trace, "ip");
             var loc = TraceField(trace, "loc");
-            StatusDetail = string.IsNullOrEmpty(ip)
-                ? "Проверка: ответ пустой."
-                : $"Выход через VPN: {ip}" + (string.IsNullOrEmpty(loc) ? "" : $" · {loc}");
+            if (string.IsNullOrEmpty(ip)) { StatusDetail = "Проверка: ответ пустой."; return; }
+
+            StatusDetail = "";
+            CheckIp = ip;
+            CheckLoc = loc;
+            CheckFlag = FlagEmoji(loc);
+            CheckResultVisible = true;
         }
         catch (Exception ex)
         {
             StatusDetail = "Проверка не удалась: " + ex.Message;
         }
+    }
+
+    /// <summary>Turn a 2-letter ISO country code into its flag emoji (regional indicators).</summary>
+    private static string FlagEmoji(string cc)
+    {
+        cc = (cc ?? "").Trim().ToUpperInvariant();
+        if (cc.Length != 2 || !cc.All(char.IsLetter)) return "🌐";
+        return string.Concat(cc.Select(c => char.ConvertFromUtf32(0x1F1E6 + (c - 'A'))));
     }
 
     private static string TraceField(string trace, string key)
@@ -513,11 +572,11 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var items = Servers.Where(v => v.Config.Server != "0.0.0.0" && !string.IsNullOrWhiteSpace(v.Config.Server)).ToList();
-            foreach (var v in items) OnUi(() => v.PingText = "…");
+            foreach (var v in items) { var vv = v; OnUi(() => vv.PingMs = -3); }
             await Task.WhenAll(items.Select(async v =>
             {
                 var ms = await PingService.TcpPingAsync(v.Config.Server, v.Config.Port);
-                OnUi(() => v.PingText = ms >= 0 ? $"{ms} мс" : "—");
+                OnUi(() => v.PingMs = ms >= 0 ? ms : -1);
             }));
         }
         finally { _pinging = false; }
@@ -613,12 +672,28 @@ public sealed partial class MainViewModel : ObservableObject
         ShowSpeed = true;
         TotalDownText = "4,2 МБ/с";
         TotalUpText = "180 КБ/с";
+        ShowDuration = true;
+        SessionDurationText = "00:12:34";
+        SessionDownText = "1,84 ГБ";
+        SessionUpText = "96,3 МБ";
         OnPropertyChanged(nameof(IsConnected));
         OnPropertyChanged(nameof(IsActive));
         OnPropertyChanged(nameof(ConnectLabel));
         OnPropertyChanged(nameof(StatusBrush));
         OnPropertyChanged(nameof(ConnectButtonBrush));
         ConnectionChanged?.Invoke(this, ConnectionStatus.Connected);
+
+        // DEMO=2 also shows the check mini-plate + ping badges (for visual verification).
+        if (Environment.GetEnvironmentVariable("TUNNELDECK_DEMO") == "2")
+        {
+            StatusDetail = "";
+            CheckIp = "146.70.28.14";
+            CheckLoc = "PL";
+            CheckFlag = FlagEmoji("PL");
+            CheckResultVisible = true;
+            var demoPings = new[] { 38, 120, 260 };
+            for (int i = 0; i < Servers.Count; i++) Servers[i].PingMs = demoPings[i % demoPings.Length];
+        }
     }
 
     private static void OnUi(Action action)

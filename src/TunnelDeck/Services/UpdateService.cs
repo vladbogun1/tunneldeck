@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace TunnelDeck.Services;
 
-public sealed record UpdateInfo(Version Version, string Tag, string InstallerUrl, string Notes);
+public sealed record UpdateInfo(Version Version, string Tag, string InstallerUrl, string Notes, string HtmlUrl);
 
 /// <summary>
 /// Checks GitHub Releases for a newer version and downloads the installer.
@@ -43,6 +43,9 @@ public sealed class UpdateService
 
         var tag = root.TryGetProperty("tag_name", out var t) ? t.GetString() ?? "" : "";
         var notes = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
+        var htmlUrl = root.TryGetProperty("html_url", out var hu) ? hu.GetString() ?? "" : "";
+        if (string.IsNullOrWhiteSpace(htmlUrl))
+            htmlUrl = $"https://github.com/vladbogun1/tunneldeck/releases/tag/{tag}";
         if (!TryParseTag(tag, out var version)) return null;
         if (version <= CurrentVersion) return null;
 
@@ -62,7 +65,7 @@ public sealed class UpdateService
         }
         if (string.IsNullOrWhiteSpace(url)) return null;
 
-        return new UpdateInfo(version, tag, url, notes);
+        return new UpdateInfo(version, tag, url, notes, htmlUrl);
     }
 
     private static bool TryParseTag(string tag, out Version version)

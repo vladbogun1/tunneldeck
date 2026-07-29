@@ -16,15 +16,17 @@ public sealed class TrafficStatsService
     private CancellationTokenSource? _cts;
 
     private long _prevUp, _prevDown, _lastTicks;
+    private long _sessUp, _sessDown;   // cumulative for this session (robust to core restarts)
     private bool _hasPrev;
 
-    /// <summary>(upBps, downBps)</summary>
-    public event EventHandler<(long up, long down)>? Updated;
+    /// <summary>(upBps, downBps, sessUpTotal, sessDownTotal) — per-sec speed + cumulative bytes.</summary>
+    public event EventHandler<(long up, long down, long sessUp, long sessDown)>? Updated;
 
     public void Start()
     {
         Stop();
         _hasPrev = false;
+        _sessUp = _sessDown = 0;
         _cts = new CancellationTokenSource();
         _ = LoopAsync(_cts.Token);
     }
@@ -33,7 +35,7 @@ public sealed class TrafficStatsService
     {
         try { _cts?.Cancel(); } catch { }
         _cts = null;
-        Updated?.Invoke(this, (0, 0));
+        Updated?.Invoke(this, (0, 0, _sessUp, _sessDown));
     }
 
     private async Task LoopAsync(CancellationToken ct)
@@ -45,7 +47,7 @@ public sealed class TrafficStatsService
             {
                 var json = await _http.GetStringAsync(url, ct);
                 var (up, down) = ComputeSpeed(json);
-                Updated?.Invoke(this, (up, down));
+                Updated?.Invoke(this, (up, down, _sessUp, _sessDown));
             }
             catch
             {
@@ -77,6 +79,8 @@ public sealed class TrafficStatsService
             var dd = down >= _prevDown ? down - _prevDown : 0;
             upBps = (long)(du / elapsed);
             downBps = (long)(dd / elapsed);
+            _sessUp += du;
+            _sessDown += dd;
         }
 
         _prevUp = up; _prevDown = down; _lastTicks = now; _hasPrev = true;
@@ -90,5 +94,17 @@ public sealed class TrafficStatsService
         if (kb < 1024) return $"{kb:0} КБ/с";
         double mb = kb / 1024.0;
         return $"{mb:0.0} МБ/с";
+    }
+
+    /// <summary>Format a cumulative byte count (e.g. "1,4 ГБ").</summary>
+    public static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} Б";
+        double kb = bytes / 1024.0;
+        if (kb < 1024) return $"{kb:0} КБ";
+        double mb = kb / 1024.0;
+        if (mb < 1024) return $"{mb:0.0} МБ";
+        double gb = mb / 1024.0;
+        return $"{gb:0.00} ГБ";
     }
 }

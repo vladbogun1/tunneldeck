@@ -56,7 +56,8 @@ public partial class App : Application
             case "sub": _vm.GoSubscriptionCommand.Execute(null); break;
         }
 
-        if (Environment.GetEnvironmentVariable("TUNNELDECK_DEMO") == "1")
+        var demo = Environment.GetEnvironmentVariable("TUNNELDECK_DEMO");
+        if (demo is "1" or "2")
             _vm.SetDemoConnected();
     }
 
