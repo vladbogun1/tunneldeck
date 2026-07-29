@@ -6,7 +6,7 @@
 ;   assets\Windows.Packet.Filter.x64.msi        (network filter driver)
 
 #define AppName "TunnelDeck"
-#define AppVersion "1.3.1"
+#define AppVersion "1.3.2"
 #define AppPublisher "vladbogun1"
 #define AppExe "TunnelDeck.exe"
 

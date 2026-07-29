@@ -11,7 +11,7 @@
     <RootNamespace>TunnelDeck</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
-    <Version>1.3.1</Version>
+    <Version>1.3.2</Version>
     <Company>TunnelDeck</Company>
     <Product>TunnelDeck</Product>
     <!-- Tray app: keep a single self-contained build simple -->

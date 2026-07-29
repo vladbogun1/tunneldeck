@@ -351,6 +351,8 @@
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
                             <Setter Property="Margin" Value="0,0,0,6"/>
+                            <!-- Themed text: ListBoxItem otherwise forces black, which is invisible in dark mode. -->
+                            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="ListBoxItem">
