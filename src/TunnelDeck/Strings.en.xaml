@@ -9,8 +9,8 @@
     <s:String x:Key="S.EmptyTitle">Nothing selected yet</s:String>
     <s:String x:Key="S.EmptySub">Add an app or a website to route it through the VPN.</s:String>
     <s:String x:Key="S.AddApp">＋  Add application</s:String>
-    <s:String x:Key="S.RefreshKey">↻ Refresh key</s:String>
-    <s:String x:Key="S.Check">🔎 Check</s:String>
+    <s:String x:Key="S.RefreshKey">Refresh key</s:String>
+    <s:String x:Key="S.Check">Check</s:String>
     <s:String x:Key="S.OnboardTitle">Add your VPN key</s:String>
     <s:String x:Key="S.OnboardSub">Paste your subscription link (the key from your VPN bot). TunnelDeck will fetch the servers automatically.</s:String>
     <s:String x:Key="S.PasteKey">Paste subscription key</s:String>
@@ -42,6 +42,13 @@
     <s:String x:Key="S.WhatsNew">What's new</s:String>
     <s:String x:Key="S.ExitLabel">Exit IP</s:String>
     <s:String x:Key="S.Session">Session</s:String>
+    <s:String x:Key="S.Connections">Connections</s:String>
+    <s:String x:Key="S.ConnTitle">Active connections</s:String>
+    <s:String x:Key="S.ConnEmpty">No active connections through the VPN yet.</s:String>
+    <s:String x:Key="S.LeakWarn">Possible traffic leak</s:String>
+    <s:String x:Key="S.LeakWarnSub">The VPN exit matches your real IP — traffic may be going direct.</s:String>
+    <s:String x:Key="S.LeakDown">VPN tunnel unavailable</s:String>
+    <s:String x:Key="S.LeakDownSub">The proxy isn't responding. Tunneled apps' traffic may be going direct.</s:String>
     <s:String x:Key="S.LangAuto">System</s:String>
 
     <s:String x:Key="S.St.Connected">Connected</s:String>

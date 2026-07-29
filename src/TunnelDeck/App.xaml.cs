@@ -28,10 +28,14 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, ev) => Log("AppDomain", ev.ExceptionObject as Exception);
         TaskScheduler.UnobservedTaskException += (_, ev) => { Log("Task", ev.Exception); ev.SetObserved(); };
 
-        _singleInstance = new Mutex(true, "TunnelDeck.SingleInstance", out bool isNew);
+        // Test hook: a suffix lets a debug instance coexist with the installed app.
+        var instance = Environment.GetEnvironmentVariable("TUNNELDECK_INSTANCE");
+        var mutexName = string.IsNullOrEmpty(instance) ? "TunnelDeck.SingleInstance" : $"TunnelDeck.SingleInstance.{instance}";
+        _singleInstance = new Mutex(true, mutexName, out bool isNew);
         if (!isNew) { Shutdown(); return; }
 
         Paths.EnsureDirs();
+        ThemeService.Init();   // follow the Windows light/dark setting
 
         _vm = new MainViewModel();
         _vm.ConnectionChanged += (_, status) => { UpdateTray(status); Notify(status); };
@@ -54,6 +58,7 @@ public partial class App : Application
             case "settings": _vm.GoSettingsCommand.Execute(null); break;
             case "addapp": _vm.GoAddAppCommand.Execute(null); break;
             case "sub": _vm.GoSubscriptionCommand.Execute(null); break;
+            case "connections": _vm.GoConnectionsCommand.Execute(null); break;
         }
 
         var demo = Environment.GetEnvironmentVariable("TUNNELDECK_DEMO");
@@ -73,6 +78,8 @@ public partial class App : Application
         _tray.ForceCreate();
     }
 
+    private System.Windows.Controls.MenuItem? _serversMenu;
+
     private System.Windows.Controls.ContextMenu BuildContextMenu()
     {
         var menu = new System.Windows.Controls.ContextMenu();
@@ -83,6 +90,8 @@ public partial class App : Application
         var toggle = new System.Windows.Controls.MenuItem { Header = "Подключить / Отключить" };
         toggle.Click += async (_, _) => { try { if (_vm is not null) await _vm.ToggleConnectionCommand.ExecuteAsync(null); } catch (Exception ex) { Log("Toggle", ex); } };
 
+        _serversMenu = new System.Windows.Controls.MenuItem { Header = "Серверы" };
+
         var settings = new System.Windows.Controls.MenuItem { Header = "Настройки" };
         settings.Click += (_, _) => { ShowFlyout(); _vm?.GoSettingsCommand.Execute(null); };
 
@@ -91,10 +100,52 @@ public partial class App : Application
 
         menu.Items.Add(open);
         menu.Items.Add(toggle);
+        menu.Items.Add(_serversMenu);
         menu.Items.Add(new System.Windows.Controls.Separator());
         menu.Items.Add(settings);
         menu.Items.Add(quit);
+
+        // Rebuild the servers submenu each time so it reflects current list + selection.
+        menu.Opened += (_, _) => RebuildServersMenu();
         return menu;
+    }
+
+    private void RebuildServersMenu()
+    {
+        if (_serversMenu is null || _vm is null) return;
+        _serversMenu.Items.Clear();
+
+        if (_vm.Servers.Count == 0)
+        {
+            _serversMenu.Items.Add(new System.Windows.Controls.MenuItem { Header = "Нет серверов", IsEnabled = false });
+            _serversMenu.IsEnabled = false;
+            return;
+        }
+        _serversMenu.IsEnabled = true;
+
+        foreach (var s in _vm.Servers)
+        {
+            var item = new System.Windows.Controls.MenuItem
+            {
+                Header = s.Name,
+                IsCheckable = true,
+                IsChecked = ReferenceEquals(s, _vm.SelectedServerItem)
+            };
+            if (s.FlagImage is not null)
+                item.Icon = new System.Windows.Controls.Image { Source = s.FlagImage, Width = 20, Height = 13 };
+
+            var server = s;
+            item.Click += async (_, _) =>
+            {
+                try
+                {
+                    _vm.SelectedServerItem = server;                 // switches live if connected
+                    if (!_vm.IsActive) await _vm.ConnectAsync();      // otherwise connect to it
+                }
+                catch (Exception ex) { Log("QuickSwitch", ex); }
+            };
+            _serversMenu.Items.Add(item);
+        }
     }
 
     private void UpdateTray(ConnectionStatus status)
@@ -143,7 +194,7 @@ public partial class App : Application
 
     private void ToggleFlyout()
     {
-        if (_flyout is { IsVisible: true }) _flyout.Hide();
+        if (_flyout is { IsVisible: true }) _flyout.HideToTray();
         else ShowFlyout();
     }
 

@@ -31,19 +31,23 @@ Unlike a normal VPN client that flips your whole machine, TunnelDeck redirects *
 - 🎯 **Per-app routing** — choose exactly which apps go through the VPN; pick from running apps or browse to any `.exe`.
 - 🌐 **Per-site routing** — send a specific website through the VPN (e.g. `youtube.com`) while the rest of the browser stays direct.
 - 🎮 **Games never drop** — connecting/disconnecting doesn't touch the system routes, so apps that aren't tunneled keep their connections alive.
-- 📈 **Live throughput** — see the tunnel's real ↓/↑ speed while connected.
+- 📈 **Live stats** — real ↓/↑ speed, session duration and cumulative session traffic while connected.
+- 🌍 **Servers with pings & flags** — colored latency badges and country flags; switch server right from the tray icon.
+- 🛰️ **Active connections** — see what's actually going through the VPN right now.
+- 🛡️ **Leak detector** — warns if the tunnel drops or the exit IP matches your real one.
 - 🟢 **At-a-glance status** — the tray icon frames green (connected), amber (connecting) or red (off).
-- 🔑 **One-paste setup** — paste your subscription link and TunnelDeck fetches the servers automatically (handles Happ-locked panels).
-- 🪟 **Windows 11 UI** — clean light Fluent design, fully in Russian.
+- 🔑 **One-paste setup** — paste your subscription link and TunnelDeck fetches the servers automatically (handles Happ-locked panels). VLESS/Reality, VMess, Trojan and Shadowsocks are supported.
+- 🔄 **Auto-update** — in-app banner installs new releases from GitHub in one click.
+- 🪟 **Windows 11 UI** — clean Fluent design, **light & dark** (follows the system theme), in **Russian or English** with an in-app language switch.
 - 🚀 **Launch on login** — optional autostart to the tray.
 
 ## Screenshots
 
 <table>
 <tr>
-<td><img src="docs/screen-main.png" width="250" alt="Main — connected" /><br/><b>Connected + live speed</b></td>
+<td><img src="docs/screen-main.png" width="250" alt="Main — connected" /><br/><b>Connected + live stats</b></td>
 <td><img src="docs/screen-addapp.png" width="250" alt="Add app / site" /><br/><b>Add app / website</b></td>
-<td><img src="docs/screen-settings.png" width="250" alt="Settings" /><br/><b>Settings</b></td>
+<td><img src="docs/screen-dark.png" width="250" alt="Dark theme" /><br/><b>Dark theme</b></td>
 </tr>
 </table>
 
@@ -53,7 +57,7 @@ When you add a website, TunnelDeck routes your browsers through a second local p
 
 ## Install
 
-1. Download **`TunnelDeck-Setup-1.2.2.exe`** from the [latest release](../../releases/latest) and run it.
+1. Download **`TunnelDeck-Setup-1.2.3.exe`** from the [latest release](../../releases/latest) and run it.
    The installer sets up the app, a desktop + Start-menu shortcut, and the required network-filter driver.
 2. Launch TunnelDeck (it opens from the tray icon).
 3. Paste your **subscription key**, pick a server, add the apps/sites you want, and hit **Connect**.
@@ -65,7 +69,7 @@ When you add a website, TunnelDeck routes your browsers through a second local p
 ## How it works
 
 - **Shell:** C# / .NET 8 **WPF** tray app with a borderless flyout window.
-- **Tunnel core:** [sing-box](https://sing-box.sagernet.org/) runs as a local **SOCKS/mixed proxy** (no system TUN). It speaks **VLESS + Reality** to your server.
+- **Tunnel core:** [sing-box](https://sing-box.sagernet.org/) runs as a local **SOCKS/mixed proxy** (no system TUN). It speaks **VLESS/Reality** (and VMess/Trojan/Shadowsocks) to your server.
 - **Per-app redirect:** [ProxiFyre](https://github.com/wiresock/proxifyre) (built on the **Windows Packet Filter** driver) transparently redirects the traffic of the selected processes into the local proxy — TCP and UDP.
 - **Result:** because nothing rewrites the system routing table, connecting/disconnecting only starts/stops local processes, leaving all other apps untouched.
 
@@ -85,7 +89,7 @@ dotnet publish src/TunnelDeck/TunnelDeck.csproj -c Release -r win-x64 --self-con
 
 An [Inno Setup](https://jrsoftware.org/isinfo.php) script is provided at
 [`installer/TunnelDeck.iss`](installer/TunnelDeck.iss). Building it with Inno Setup 6
-(`ISCC.exe`) produces `TunnelDeck-Setup-1.1.0.exe` — it bundles ProxiFyre, silently
+(`ISCC.exe`) produces `TunnelDeck-Setup-<version>.exe` — it bundles ProxiFyre, silently
 installs the Windows Packet Filter driver, creates shortcuts, and adds an uninstaller.
 
 ## Limitations

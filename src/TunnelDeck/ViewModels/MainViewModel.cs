@@ -11,7 +11,7 @@ using TunnelDeck.Views;
 
 namespace TunnelDeck.ViewModels;
 
-public enum Page { Main, AddApp, Settings, Subscription }
+public enum Page { Main, AddApp, Settings, Subscription, Connections }
 
 public sealed partial class MainViewModel : ObservableObject
 {
@@ -20,6 +20,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly CoreBootstrapper _bootstrap = new();
     private readonly CoreController _core = new();
     private readonly TrafficStatsService _stats = new();
+    private readonly LeakMonitor _leak = new();
     private readonly UpdateService _update = new();
     private UpdateInfo? _pendingUpdate;
 
@@ -30,7 +31,15 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<AppEntryViewModel> TunneledApps { get; } = new();
     public ObservableCollection<SiteEntryViewModel> TunneledSites { get; } = new();
     public ObservableCollection<ServerItemViewModel> Servers { get; } = new();
+    public ObservableCollection<ConnItemViewModel> ActiveConnections { get; } = new();
+    public bool HasConnections => ActiveConnections.Count > 0;
+    private readonly DispatcherTimer _connTimer;
     public string[] LogLevels { get; } = { "trace", "debug", "info", "warn", "error" };
+
+    // Leak / tunnel-down warning (shown as a red banner while connected)
+    [ObservableProperty] private bool _leakWarning;
+    [ObservableProperty] private string _leakWarningText = "";
+    [ObservableProperty] private string _leakWarningSub = "";
 
     [ObservableProperty] private string _addSiteInput = "";
 
@@ -47,11 +56,14 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _sessionDownText = "0 Б";
     [ObservableProperty] private string _sessionUpText = "0 Б";
 
-    // Check result mini-plate (exit IP + flag)
+    // Check result popup (exit IP + flag)
     [ObservableProperty] private bool _checkResultVisible;
+    [ObservableProperty] private bool _checkBusy;
     [ObservableProperty] private string _checkIp = "";
-    [ObservableProperty] private string _checkFlag = "";
     [ObservableProperty] private string _checkLoc = "";
+    [ObservableProperty] private System.Windows.Media.ImageSource? _checkFlagImage;
+    public bool CheckHasFlag => CheckFlagImage is not null;
+    partial void OnCheckFlagImageChanged(System.Windows.Media.ImageSource? value) => OnPropertyChanged(nameof(CheckHasFlag));
 
     // Auto-update
     [ObservableProperty] private bool _updateAvailable;
@@ -127,7 +139,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             Status = e.Status;
             StatusText = StatusWord(e.Status);
-            StatusDetail = e.Message ?? "";
+            // When connected, the server/country is already shown in the dropdown,
+            // so we skip the "· <country>" detail line to keep the card light.
+            StatusDetail = e.Status == ConnectionStatus.Connected ? "" : (e.Message ?? "");
             OnPropertyChanged(nameof(IsConnected));
             OnPropertyChanged(nameof(IsActive));
             OnPropertyChanged(nameof(ConnectLabel));
@@ -157,6 +171,22 @@ public sealed partial class MainViewModel : ObservableObject
             SessionDurationText = $"{(int)t.TotalHours:00}:{t.Minutes:00}:{t.Seconds:00}";
         };
 
+        _connTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _connTimer.Tick += (_, _) => RefreshConnections();
+
+        _leak.StatusChanged += (_, s) => OnUi(() =>
+        {
+            switch (s)
+            {
+                case LeakStatus.Leaking:
+                    LeakWarning = true; LeakWarningText = Loc.T("S.LeakWarn"); LeakWarningSub = Loc.T("S.LeakWarnSub"); break;
+                case LeakStatus.TunnelDown:
+                    LeakWarning = true; LeakWarningText = Loc.T("S.LeakDown"); LeakWarningSub = Loc.T("S.LeakDownSub"); break;
+                default:
+                    LeakWarning = false; break;
+            }
+        });
+
         Loc.Changed += (_, _) => OnUi(() =>
         {
             StatusText = StatusWord(Status);
@@ -174,6 +204,9 @@ public sealed partial class MainViewModel : ObservableObject
         SessionDownText = SessionUpText = "0 Б";
         ShowDuration = true;
         _sessionTimer.Start();
+
+        LeakWarning = false;
+        _leak.Start();
     }
 
     private void StopStats()
@@ -184,6 +217,12 @@ public sealed partial class MainViewModel : ObservableObject
 
         _sessionTimer.Stop();
         ShowDuration = false;
+
+        _leak.Stop();
+        LeakWarning = false;
+        _connTimer.Stop();
+        ActiveConnections.Clear();
+        OnPropertyChanged(nameof(HasConnections));
 
         // Reset the check plate when the tunnel drops.
         CheckResultVisible = false;
@@ -329,6 +368,39 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand] private void GoSettings() => CurrentPage = Page.Settings;
 
     [RelayCommand]
+    private void GoConnections()
+    {
+        CurrentPage = Page.Connections;
+        RefreshConnections();
+    }
+
+    partial void OnCurrentPageChanged(Page value)
+    {
+        if (value == Page.Connections) _connTimer.Start();
+        else _connTimer.Stop();
+    }
+
+    private async void RefreshConnections()
+    {
+        if (!IsConnected)
+        {
+            OnUi(() => { ActiveConnections.Clear(); OnPropertyChanged(nameof(HasConnections)); });
+            return;
+        }
+        try
+        {
+            var list = await _stats.FetchConnectionsAsync();
+            OnUi(() =>
+            {
+                ActiveConnections.Clear();
+                foreach (var c in list.Take(25)) ActiveConnections.Add(new ConnItemViewModel(c));
+                OnPropertyChanged(nameof(HasConnections));
+            });
+        }
+        catch { /* transient */ }
+    }
+
+    [RelayCommand]
     private void GoSubscription()
     {
         SubscriptionInput = _state.SubscriptionUrl;
@@ -379,8 +451,13 @@ public sealed partial class MainViewModel : ObservableObject
         if (!IsConnected) { StatusDetail = "Сначала подключитесь."; return; }
         try
         {
-            CheckResultVisible = false;
-            StatusDetail = "Проверка выхода…";
+            // Show the popup immediately in a loading state, then fill it in.
+            CheckBusy = true;
+            CheckIp = "";
+            CheckLoc = "";
+            CheckFlagImage = null;
+            CheckResultVisible = true;
+
             var handler = new HttpClientHandler
             {
                 Proxy = new WebProxy($"socks5://{SingBoxConfigBuilder.SocksEndpoint}"),
@@ -391,26 +468,20 @@ public sealed partial class MainViewModel : ObservableObject
             var trace = await http.GetStringAsync("https://www.cloudflare.com/cdn-cgi/trace");
             var ip = TraceField(trace, "ip");
             var loc = TraceField(trace, "loc");
-            if (string.IsNullOrEmpty(ip)) { StatusDetail = "Проверка: ответ пустой."; return; }
 
-            StatusDetail = "";
+            CheckBusy = false;
+            if (string.IsNullOrEmpty(ip)) { CheckIp = "—"; return; }
             CheckIp = ip;
             CheckLoc = loc;
-            CheckFlag = FlagEmoji(loc);
-            CheckResultVisible = true;
+            CheckFlagImage = FlagFactory.For(loc);
         }
         catch (Exception ex)
         {
+            CheckBusy = false;
+            CheckIp = "—";
+            CheckLoc = "";
             StatusDetail = "Проверка не удалась: " + ex.Message;
         }
-    }
-
-    /// <summary>Turn a 2-letter ISO country code into its flag emoji (regional indicators).</summary>
-    private static string FlagEmoji(string cc)
-    {
-        cc = (cc ?? "").Trim().ToUpperInvariant();
-        if (cc.Length != 2 || !cc.All(char.IsLetter)) return "🌐";
-        return string.Concat(cc.Select(c => char.ConvertFromUtf32(0x1F1E6 + (c - 'A'))));
     }
 
     private static string TraceField(string trace, string key)
@@ -668,7 +739,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         Status = ConnectionStatus.Connected;
         StatusText = Loc.T("S.St.Connected");
-        StatusDetail = $"{Loc.T("S.St.Connected")} · Польша";
+        StatusDetail = "";   // real app also clears this when connected (server shown in dropdown)
         ShowSpeed = true;
         TotalDownText = "4,2 МБ/с";
         TotalUpText = "180 КБ/с";
@@ -687,12 +758,29 @@ public sealed partial class MainViewModel : ObservableObject
         if (Environment.GetEnvironmentVariable("TUNNELDECK_DEMO") == "2")
         {
             StatusDetail = "";
+            CheckBusy = false;
             CheckIp = "146.70.28.14";
-            CheckLoc = "PL";
-            CheckFlag = FlagEmoji("PL");
+            CheckLoc = "NL";
+            CheckFlagImage = FlagFactory.For("NL");
             CheckResultVisible = true;
             var demoPings = new[] { 38, 120, 260 };
             for (int i = 0; i < Servers.Count; i++) Servers[i].PingMs = demoPings[i % demoPings.Length];
+
+            ActiveConnections.Clear();
+            foreach (var c in new[]
+            {
+                new TrafficStatsService.ConnectionInfo("youtube.com", "tcp · 443", 210_000, 4_200_000),
+                new TrafficStatsService.ConnectionInfo("discord.com", "tcp · 443", 88_000, 640_000),
+                new TrafficStatsService.ConnectionInfo("cloudflare.com", "tcp · 443", 12_000, 96_000),
+            }) ActiveConnections.Add(new ConnItemViewModel(c));
+            OnPropertyChanged(nameof(HasConnections));
+
+            if (Environment.GetEnvironmentVariable("TUNNELDECK_LEAK") == "1")
+            {
+                LeakWarning = true;
+                LeakWarningText = Loc.T("S.LeakWarn");
+                LeakWarningSub = Loc.T("S.LeakWarnSub");
+            }
         }
     }
 
