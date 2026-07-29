@@ -76,6 +76,8 @@ public partial class App : Application
         _tray.ForceCreate();
     }
 
+    private System.Windows.Controls.MenuItem? _serversMenu;
+
     private System.Windows.Controls.ContextMenu BuildContextMenu()
     {
         var menu = new System.Windows.Controls.ContextMenu();
@@ -86,6 +88,8 @@ public partial class App : Application
         var toggle = new System.Windows.Controls.MenuItem { Header = "Подключить / Отключить" };
         toggle.Click += async (_, _) => { try { if (_vm is not null) await _vm.ToggleConnectionCommand.ExecuteAsync(null); } catch (Exception ex) { Log("Toggle", ex); } };
 
+        _serversMenu = new System.Windows.Controls.MenuItem { Header = "Серверы" };
+
         var settings = new System.Windows.Controls.MenuItem { Header = "Настройки" };
         settings.Click += (_, _) => { ShowFlyout(); _vm?.GoSettingsCommand.Execute(null); };
 
@@ -94,10 +98,52 @@ public partial class App : Application
 
         menu.Items.Add(open);
         menu.Items.Add(toggle);
+        menu.Items.Add(_serversMenu);
         menu.Items.Add(new System.Windows.Controls.Separator());
         menu.Items.Add(settings);
         menu.Items.Add(quit);
+
+        // Rebuild the servers submenu each time so it reflects current list + selection.
+        menu.Opened += (_, _) => RebuildServersMenu();
         return menu;
+    }
+
+    private void RebuildServersMenu()
+    {
+        if (_serversMenu is null || _vm is null) return;
+        _serversMenu.Items.Clear();
+
+        if (_vm.Servers.Count == 0)
+        {
+            _serversMenu.Items.Add(new System.Windows.Controls.MenuItem { Header = "Нет серверов", IsEnabled = false });
+            _serversMenu.IsEnabled = false;
+            return;
+        }
+        _serversMenu.IsEnabled = true;
+
+        foreach (var s in _vm.Servers)
+        {
+            var item = new System.Windows.Controls.MenuItem
+            {
+                Header = s.Name,
+                IsCheckable = true,
+                IsChecked = ReferenceEquals(s, _vm.SelectedServerItem)
+            };
+            if (s.FlagImage is not null)
+                item.Icon = new System.Windows.Controls.Image { Source = s.FlagImage, Width = 20, Height = 13 };
+
+            var server = s;
+            item.Click += async (_, _) =>
+            {
+                try
+                {
+                    _vm.SelectedServerItem = server;                 // switches live if connected
+                    if (!_vm.IsActive) await _vm.ConnectAsync();      // otherwise connect to it
+                }
+                catch (Exception ex) { Log("QuickSwitch", ex); }
+            };
+            _serversMenu.Items.Add(item);
+        }
     }
 
     private void UpdateTray(ConnectionStatus status)
