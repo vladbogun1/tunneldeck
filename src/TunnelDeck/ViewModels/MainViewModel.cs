@@ -28,7 +28,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public ObservableCollection<AppEntryViewModel> TunneledApps { get; } = new();
     public ObservableCollection<SiteEntryViewModel> TunneledSites { get; } = new();
-    public ObservableCollection<ServerConfig> Servers { get; } = new();
+    public ObservableCollection<ServerItemViewModel> Servers { get; } = new();
     public string[] LogLevels { get; } = { "trace", "debug", "info", "warn", "error" };
 
     [ObservableProperty] private string _addSiteInput = "";
@@ -48,8 +48,11 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private AddAppViewModel? _addApp;
     [ObservableProperty] private string _subscriptionInput = "";
 
-    [ObservableProperty] private ServerConfig? _selectedServer;
+    [ObservableProperty] private ServerItemViewModel? _selectedServerItem;
     [ObservableProperty] private ConnectionStatus _status = ConnectionStatus.Disconnected;
+
+    /// <summary>The currently selected server config (from the selected dropdown item).</summary>
+    public ServerConfig? SelectedServer => SelectedServerItem?.Config;
     [ObservableProperty] private string _statusText = "Выключено";
     [ObservableProperty] private string _statusDetail = "";
     [ObservableProperty] private bool _isBusy;
@@ -61,6 +64,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _killSwitch = true;
     [ObservableProperty] private bool _proxyDns = true;
     [ObservableProperty] private string _logLevel = "warn";
+    [ObservableProperty] private string _language = "system";
 
     public bool IsConnected => Status is ConnectionStatus.Connected;
     public bool HasSubscription => Servers.Count > 0;
@@ -71,7 +75,16 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsActive => Status is ConnectionStatus.Connected
         or ConnectionStatus.Connecting or ConnectionStatus.Reconnecting;
 
-    public string ConnectLabel => IsActive ? "Отключить" : "Подключить";
+    public string ConnectLabel => IsActive ? Loc.T("S.Disconnect") : Loc.T("S.Connect");
+
+    private static string StatusWord(ConnectionStatus s) => Loc.T(s switch
+    {
+        ConnectionStatus.Connected => "S.St.Connected",
+        ConnectionStatus.Connecting => "S.St.Connecting",
+        ConnectionStatus.Reconnecting => "S.St.Reconnecting",
+        ConnectionStatus.Error => "S.St.Error",
+        _ => "S.St.Off"
+    });
 
     public System.Windows.Media.Brush StatusBrush => new System.Windows.Media.SolidColorBrush(
         Status switch
@@ -83,24 +96,28 @@ public sealed partial class MainViewModel : ObservableObject
             _ => System.Windows.Media.Color.FromRgb(0x8A, 0x8A, 0x8A)
         });
 
+    /// <summary>Background for the connect button: blue = connect, red = disconnect, amber = busy.</summary>
+    public System.Windows.Media.Brush ConnectButtonBrush => new System.Windows.Media.SolidColorBrush(
+        Status switch
+        {
+            ConnectionStatus.Connected => System.Windows.Media.Color.FromRgb(0xC4, 0x2B, 0x1C),   // red (Отключить)
+            ConnectionStatus.Connecting => System.Windows.Media.Color.FromRgb(0xB0, 0x71, 0x05),  // amber (busy)
+            ConnectionStatus.Reconnecting => System.Windows.Media.Color.FromRgb(0xB0, 0x71, 0x05),
+            _ => System.Windows.Media.Color.FromRgb(0x00, 0x5F, 0xB8)                              // blue (Подключить)
+        });
+
     public MainViewModel()
     {
         _core.StatusChanged += (_, e) => OnUi(() =>
         {
             Status = e.Status;
-            StatusText = e.Status switch
-            {
-                ConnectionStatus.Connected => "Подключено",
-                ConnectionStatus.Connecting => "Подключение…",
-                ConnectionStatus.Reconnecting => "Переподключение…",
-                ConnectionStatus.Error => "Ошибка",
-                _ => "Выключено"
-            };
+            StatusText = StatusWord(e.Status);
             StatusDetail = e.Message ?? "";
             OnPropertyChanged(nameof(IsConnected));
             OnPropertyChanged(nameof(IsActive));
             OnPropertyChanged(nameof(ConnectLabel));
             OnPropertyChanged(nameof(StatusBrush));
+            OnPropertyChanged(nameof(ConnectButtonBrush));
             ConnectionChanged?.Invoke(this, e.Status);
 
             if (e.Status == ConnectionStatus.Connected) StartStats();
@@ -114,6 +131,12 @@ public sealed partial class MainViewModel : ObservableObject
         {
             TotalUpText = TrafficStatsService.Format(s.up);
             TotalDownText = TrafficStatsService.Format(s.down);
+        });
+
+        Loc.Changed += (_, _) => OnUi(() =>
+        {
+            StatusText = StatusWord(Status);
+            OnPropertyChanged(nameof(ConnectLabel));
         });
     }
 
@@ -137,6 +160,7 @@ public sealed partial class MainViewModel : ObservableObject
     public async Task InitializeAsync()
     {
         _state = _store.Load();
+        Loc.Apply(Loc.Resolve(_state.Settings.Language));
         RebuildFromState();
 
         try
@@ -209,9 +233,10 @@ public sealed partial class MainViewModel : ObservableObject
         foreach (var s in _state.Servers)
         {
             s.Name = TextUtil.StripEmoji(s.Name);   // clean already-persisted names
-            Servers.Add(s);
+            Servers.Add(new ServerItemViewModel(s));
         }
-        SelectedServer = _state.SelectedServer;
+        SelectedServerItem = Servers.FirstOrDefault(v => v.Config.Id == _state.SelectedServerId)
+                             ?? Servers.FirstOrDefault();
 
         TunneledApps.Clear();
         foreach (var app in _state.TunneledApps)
@@ -227,6 +252,7 @@ public sealed partial class MainViewModel : ObservableObject
         KillSwitch = _state.Settings.KillSwitch;
         ProxyDns = _state.Settings.ProxyDnsForTunneledApps;
         LogLevel = _state.Settings.LogLevel;
+        Language = _state.Settings.Language;
 
         SubscriptionInput = _state.SubscriptionUrl;
 
@@ -472,32 +498,36 @@ public sealed partial class MainViewModel : ObservableObject
 
     // ---- Server selection ------------------------------------------------
 
-    /// <summary>Ping all servers and select the fastest reachable one.</summary>
-    [RelayCommand]
-    private async Task PickFastestAsync()
-    {
-        var servers = _state.Servers.Where(s => s.Server != "0.0.0.0" && !string.IsNullOrWhiteSpace(s.Server)).ToList();
-        if (servers.Count == 0) return;
+    private long _lastPingTicks;
+    private bool _pinging;
 
-        IsBusy = true;
-        StatusDetail = "Замер пинга…";
+    /// <summary>Measure TCP ping for every server (called when the dropdown opens; throttled).</summary>
+    public async void MeasurePings()
+    {
+        if (_pinging) return;
+        // Throttle: at most once per 12 seconds.
+        var now = Environment.TickCount64;
+        if (_lastPingTicks != 0 && now - _lastPingTicks < 12_000) return;
+        _lastPingTicks = now;
+        _pinging = true;
         try
         {
-            var results = await Task.WhenAll(servers.Select(async s =>
-                (server: s, ping: await PingService.TcpPingAsync(s.Server, s.Port))));
-
-            var best = results.Where(r => r.ping >= 0).OrderBy(r => r.ping).FirstOrDefault();
-            if (best.server is null) { StatusDetail = "Ни один сервер не отвечает."; return; }
-            SelectedServer = best.server;
-            StatusDetail = $"Быстрейший: {best.server.Name} · {best.ping} мс";
+            var items = Servers.Where(v => v.Config.Server != "0.0.0.0" && !string.IsNullOrWhiteSpace(v.Config.Server)).ToList();
+            foreach (var v in items) OnUi(() => v.PingText = "…");
+            await Task.WhenAll(items.Select(async v =>
+            {
+                var ms = await PingService.TcpPingAsync(v.Config.Server, v.Config.Port);
+                OnUi(() => v.PingText = ms >= 0 ? $"{ms} мс" : "—");
+            }));
         }
-        finally { IsBusy = false; }
+        finally { _pinging = false; }
     }
 
-    partial void OnSelectedServerChanged(ServerConfig? value)
+    partial void OnSelectedServerItemChanged(ServerItemViewModel? value)
     {
+        OnPropertyChanged(nameof(SelectedServer));
         if (_loading || value is null) return;
-        _state.SelectedServerId = value.Id;
+        _state.SelectedServerId = value.Config.Id;
         Persist();
         SafeApply();
     }
@@ -543,6 +573,14 @@ public sealed partial class MainViewModel : ObservableObject
         SafeApply();
     }
 
+    partial void OnLanguageChanged(string value)
+    {
+        if (_loading || string.IsNullOrWhiteSpace(value)) return;
+        _state.Settings.Language = value;
+        Loc.Apply(Loc.Resolve(value));
+        Persist();
+    }
+
     // ---- Helpers ---------------------------------------------------------
 
     private string EnsureHwid()
@@ -570,8 +608,8 @@ public sealed partial class MainViewModel : ObservableObject
     public void SetDemoConnected()
     {
         Status = ConnectionStatus.Connected;
-        StatusText = "Подключено";
-        StatusDetail = "Подключено · Польша";
+        StatusText = Loc.T("S.St.Connected");
+        StatusDetail = $"{Loc.T("S.St.Connected")} · Польша";
         ShowSpeed = true;
         TotalDownText = "4,2 МБ/с";
         TotalUpText = "180 КБ/с";
@@ -579,6 +617,7 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsActive));
         OnPropertyChanged(nameof(ConnectLabel));
         OnPropertyChanged(nameof(StatusBrush));
+        OnPropertyChanged(nameof(ConnectButtonBrush));
         ConnectionChanged?.Invoke(this, ConnectionStatus.Connected);
     }
 

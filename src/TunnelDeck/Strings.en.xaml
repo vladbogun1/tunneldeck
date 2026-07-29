@@ -1,0 +1,50 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:s="clr-namespace:System;assembly=mscorlib">
+
+    <s:String x:Key="S.Update">Update</s:String>
+    <s:String x:Key="S.AppsHeader">APPS THROUGH VPN</s:String>
+    <s:String x:Key="S.SitesHeader">SITES THROUGH VPN</s:String>
+    <s:String x:Key="S.ViaBrowser">via browser</s:String>
+    <s:String x:Key="S.EmptyTitle">Nothing selected yet</s:String>
+    <s:String x:Key="S.EmptySub">Add an app or a website to route it through the VPN.</s:String>
+    <s:String x:Key="S.AddApp">＋  Add application</s:String>
+    <s:String x:Key="S.RefreshKey">↻ Refresh key</s:String>
+    <s:String x:Key="S.Check">🔎 Check</s:String>
+    <s:String x:Key="S.OnboardTitle">Add your VPN key</s:String>
+    <s:String x:Key="S.OnboardSub">Paste your subscription link (the key from your VPN bot). TunnelDeck will fetch the servers automatically.</s:String>
+    <s:String x:Key="S.PasteKey">Paste subscription key</s:String>
+    <s:String x:Key="S.AddAppTitle">Add application</s:String>
+    <s:String x:Key="S.SearchApp">Search app…</s:String>
+    <s:String x:Key="S.LoadingApps">Loading apps…</s:String>
+    <s:String x:Key="S.BrowseExe">Choose .exe manually…</s:String>
+    <s:String x:Key="S.AddSelected">Add selected</s:String>
+    <s:String x:Key="S.SiteHint">…or route a specific website in the browser through the VPN:</s:String>
+    <s:String x:Key="S.AddSite">Add site</s:String>
+    <s:String x:Key="S.SettingsTitle">Settings</s:String>
+    <s:String x:Key="S.StartWin">Start with Windows</s:String>
+    <s:String x:Key="S.StartWinSub">Open TunnelDeck when you sign in.</s:String>
+    <s:String x:Key="S.AutoConnect">Auto-connect on launch</s:String>
+    <s:String x:Key="S.AutoConnectSub">Connect the VPN as soon as the app starts.</s:String>
+    <s:String x:Key="S.KillSwitchSub">Restart the core if it dies so tunneled apps don't leak.</s:String>
+    <s:String x:Key="S.DnsVpn">DNS through VPN</s:String>
+    <s:String x:Key="S.DnsVpnSub">Resolve tunneled apps' DNS via the proxy (prevents leaks).</s:String>
+    <s:String x:Key="S.LogLevel">Log level</s:String>
+    <s:String x:Key="S.LogLevelSub">sing-box core verbosity.</s:String>
+    <s:String x:Key="S.Language">Language</s:String>
+    <s:String x:Key="S.LanguageSub">Interface language.</s:String>
+    <s:String x:Key="S.SubTitle">Subscription key</s:String>
+    <s:String x:Key="S.SubDesc">Paste the subscription link from your VPN (the one the bot sent), or a vless:// key.</s:String>
+    <s:String x:Key="S.LoadServers">Load servers</s:String>
+    <s:String x:Key="S.TipSettings">Settings</s:String>
+    <s:String x:Key="S.TipRemove">Remove</s:String>
+    <s:String x:Key="S.LangAuto">System</s:String>
+
+    <s:String x:Key="S.St.Connected">Connected</s:String>
+    <s:String x:Key="S.St.Connecting">Connecting…</s:String>
+    <s:String x:Key="S.St.Reconnecting">Reconnecting…</s:String>
+    <s:String x:Key="S.St.Error">Error</s:String>
+    <s:String x:Key="S.St.Off">Off</s:String>
+    <s:String x:Key="S.Connect">Connect</s:String>
+    <s:String x:Key="S.Disconnect">Disconnect</s:String>
+</ResourceDictionary>

@@ -5,6 +5,10 @@
     <Application.Resources>
         <ResourceDictionary>
 
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Strings.en.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
             <!-- ================= Windows 11 (Fluent) light palette ================= -->
             <SolidColorBrush x:Key="WindowBg"      Color="#F3F3F3"/>
             <SolidColorBrush x:Key="Card"          Color="#FFFFFF"/>
@@ -25,8 +29,12 @@
             <SolidColorBrush x:Key="RedSoft"       Color="#FDE7E9"/>
 
             <!-- ================= Base text ================= -->
+            <!-- NOTE: intentionally NOT setting Foreground here. An implicit TextBlock
+                 Foreground would override the color inherited inside buttons (WPF wraps
+                 button content in a TextBlock), making blue-button text render dark.
+                 Default text color is set on the window root via TextElement.Foreground;
+                 buttons impose their own Foreground on their content. -->
             <Style TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
                 <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
                 <Setter Property="FontSize" Value="13"/>
                 <Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/>
@@ -59,6 +67,37 @@
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
                                     <Setter TargetName="b" Property="Opacity" Value="0.35"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ============ Connect button (status-adaptive background) ============ -->
+            <Style x:Key="ConnectButton" TargetType="Button">
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Height" Value="38"/>
+                <Setter Property="Background" Value="{StaticResource Accent}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="7">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="Opacity" Value="0.92"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="b" Property="Opacity" Value="0.82"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="b" Property="Opacity" Value="0.4"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>

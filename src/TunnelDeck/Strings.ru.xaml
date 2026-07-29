@@ -1,0 +1,50 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:s="clr-namespace:System;assembly=mscorlib">
+
+    <s:String x:Key="S.Update">Обновить</s:String>
+    <s:String x:Key="S.AppsHeader">ПРИЛОЖЕНИЯ ЧЕРЕЗ VPN</s:String>
+    <s:String x:Key="S.SitesHeader">САЙТЫ ЧЕРЕЗ VPN</s:String>
+    <s:String x:Key="S.ViaBrowser">через браузер</s:String>
+    <s:String x:Key="S.EmptyTitle">Пока ничего не выбрано</s:String>
+    <s:String x:Key="S.EmptySub">Добавьте приложение или сайт, чтобы направить трафик через VPN.</s:String>
+    <s:String x:Key="S.AddApp">＋  Добавить приложение</s:String>
+    <s:String x:Key="S.RefreshKey">↻ Обновить ключ</s:String>
+    <s:String x:Key="S.Check">🔎 Проверить</s:String>
+    <s:String x:Key="S.OnboardTitle">Добавьте ключ VPN</s:String>
+    <s:String x:Key="S.OnboardSub">Вставьте ссылку-подписку (ключ от вашего VPN-бота). TunnelDeck сам загрузит список серверов.</s:String>
+    <s:String x:Key="S.PasteKey">Вставить ключ подписки</s:String>
+    <s:String x:Key="S.AddAppTitle">Добавить приложение</s:String>
+    <s:String x:Key="S.SearchApp">Поиск приложения…</s:String>
+    <s:String x:Key="S.LoadingApps">Загрузка приложений…</s:String>
+    <s:String x:Key="S.BrowseExe">Выбрать .exe вручную…</s:String>
+    <s:String x:Key="S.AddSelected">Добавить выбранное</s:String>
+    <s:String x:Key="S.SiteHint">…или направить через VPN конкретный сайт в браузере:</s:String>
+    <s:String x:Key="S.AddSite">Добавить сайт</s:String>
+    <s:String x:Key="S.SettingsTitle">Настройки</s:String>
+    <s:String x:Key="S.StartWin">Запускать с Windows</s:String>
+    <s:String x:Key="S.StartWinSub">Открывать TunnelDeck при входе в систему.</s:String>
+    <s:String x:Key="S.AutoConnect">Автоподключение при старте</s:String>
+    <s:String x:Key="S.AutoConnectSub">Подключать VPN сразу после запуска.</s:String>
+    <s:String x:Key="S.KillSwitchSub">Перезапускать ядро при сбое, чтобы трафик выбранных приложений не утёк.</s:String>
+    <s:String x:Key="S.DnsVpn">DNS через VPN</s:String>
+    <s:String x:Key="S.DnsVpnSub">Резолвить DNS выбранных приложений через прокси (защита от утечек).</s:String>
+    <s:String x:Key="S.LogLevel">Уровень логов</s:String>
+    <s:String x:Key="S.LogLevelSub">Детализация логов ядра sing-box.</s:String>
+    <s:String x:Key="S.Language">Язык</s:String>
+    <s:String x:Key="S.LanguageSub">Язык интерфейса.</s:String>
+    <s:String x:Key="S.SubTitle">Ключ подписки</s:String>
+    <s:String x:Key="S.SubDesc">Вставьте ссылку-подписку от вашего VPN (та, что прислал бот), или ключ vless://.</s:String>
+    <s:String x:Key="S.LoadServers">Загрузить серверы</s:String>
+    <s:String x:Key="S.TipSettings">Настройки</s:String>
+    <s:String x:Key="S.TipRemove">Убрать</s:String>
+    <s:String x:Key="S.LangAuto">Системный</s:String>
+
+    <s:String x:Key="S.St.Connected">Подключено</s:String>
+    <s:String x:Key="S.St.Connecting">Подключение…</s:String>
+    <s:String x:Key="S.St.Reconnecting">Переподключение…</s:String>
+    <s:String x:Key="S.St.Error">Ошибка</s:String>
+    <s:String x:Key="S.St.Off">Выключено</s:String>
+    <s:String x:Key="S.Connect">Подключить</s:String>
+    <s:String x:Key="S.Disconnect">Отключить</s:String>
+</ResourceDictionary>

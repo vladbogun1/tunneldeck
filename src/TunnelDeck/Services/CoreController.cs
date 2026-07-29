@@ -94,7 +94,7 @@ public sealed class CoreController
             {
                 _pf.WriteConfig(_apps, _sites);
                 _pf.Start();
-                SetStatus(ConnectionStatus.Connected, $"Подключено · {_server?.Name}");
+                SetStatus(ConnectionStatus.Connected, $"{Loc.T("S.St.Connected")} · {_server?.Name}");
             }
             catch (Exception ex)
             {

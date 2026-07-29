@@ -20,4 +20,7 @@ public sealed class AppSettings
 
     /// <summary>sing-box log verbosity: trace|debug|info|warn|error</summary>
     public string LogLevel { get; set; } = "warn";
+
+    /// <summary>UI language: "system" (follow Windows) | "ru" | "en".</summary>
+    public string Language { get; set; } = "system";
 }

@@ -15,7 +15,7 @@
     </Window.Resources>
 
     <Border Background="{StaticResource WindowBg}" CornerRadius="10" BorderBrush="{StaticResource Stroke}"
-            BorderThickness="1" Margin="12">
+            BorderThickness="1" Margin="12" TextElement.Foreground="{StaticResource TextPrimary}">
         <Border.Effect>
             <DropShadowEffect BlurRadius="28" ShadowDepth="3" Opacity="0.22" Color="Black"/>
         </Border.Effect>
@@ -39,7 +39,7 @@
                         <TextBlock Text="TunnelDeck" FontSize="17" FontWeight="Bold" Margin="9,0,0,0"/>
                     </StackPanel>
                     <Button Style="{StaticResource IconButton}" HorizontalAlignment="Right" Content="⚙"
-                            FontSize="16" ToolTip="Настройки" Command="{Binding GoSettingsCommand}"/>
+                            FontSize="16" ToolTip="{DynamicResource S.TipSettings}" Command="{Binding GoSettingsCommand}"/>
                 </Grid>
 
                 <!-- Connect card -->
@@ -61,7 +61,7 @@
                                                TextWrapping="Wrap"
                                                Visibility="{Binding UpdateStatus, Converter={StaticResource BoolVis}}"/>
                                 </StackPanel>
-                                <Button Grid.Column="1" Content="Обновить" Style="{StaticResource PrimaryButton}"
+                                <Button Grid.Column="1" Content="{DynamicResource S.Update}" Style="{StaticResource PrimaryButton}"
                                         Height="30" Padding="14,0" VerticalAlignment="Center"
                                         Command="{Binding UpdateNowCommand}"/>
                             </Grid>
@@ -83,26 +83,29 @@
                                        Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
                         </StackPanel>
 
-                        <Grid Margin="0,14,0,0"
-                              Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <ComboBox Grid.Column="0" ItemsSource="{Binding Servers}" SelectedItem="{Binding SelectedServer}">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Name, Converter={StaticResource StripEmoji}}"
-                                                   TextTrimming="CharacterEllipsis"/>
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                            <Button Grid.Column="1" Content="⚡" ToolTip="Выбрать быстрейший (пинг)"
-                                    Style="{StaticResource SecondaryButton}" Width="42" Padding="0" Margin="8,0,0,0"
-                                    Command="{Binding PickFastestCommand}"/>
-                        </Grid>
+                        <ComboBox x:Name="ServerBox" Margin="0,14,0,0"
+                                  Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"
+                                  ItemsSource="{Binding Servers}" SelectedItem="{Binding SelectedServerItem}"
+                                  DropDownOpened="ServerBox_DropDownOpened">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding PingText}" Margin="10,0,0,0"
+                                                   FontSize="11.5" Foreground="{StaticResource TextTertiary}"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
 
-                        <Button Content="{Binding ConnectLabel}" Style="{StaticResource PrimaryButton}"
+                        <Button Content="{Binding ConnectLabel}" Style="{StaticResource ConnectButton}"
+                                Background="{Binding ConnectButtonBrush}"
                                 Command="{Binding ToggleConnectionCommand}" Margin="0,10,0,0"
                                 IsEnabled="{Binding HasSubscription}"
                                 Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
@@ -110,7 +113,7 @@
                 </Border>
 
                 <!-- Apps section header -->
-                <TextBlock Grid.Row="2" Text="ПРИЛОЖЕНИЯ ЧЕРЕЗ VPN" FontSize="11" FontWeight="SemiBold"
+                <TextBlock Grid.Row="2" Text="{DynamicResource S.AppsHeader}" FontSize="11" FontWeight="SemiBold"
                            Foreground="{StaticResource TextTertiary}" Margin="2,20,0,8"
                            Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
 
@@ -142,7 +145,7 @@
                                                           IsChecked="{Binding Enabled}" VerticalAlignment="Center"/>
                                             <Button Grid.Column="3" Style="{StaticResource IconButton}" Content="✕"
                                                     Width="30" Height="30" FontSize="12" Margin="4,0,0,0"
-                                                    ToolTip="Убрать"
+                                                    ToolTip="{DynamicResource S.TipRemove}"
                                                     Command="{Binding DataContext.RemoveAppCommand,
                                                               RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"/>
@@ -153,7 +156,7 @@
                         </ItemsControl>
 
                         <!-- Sites -->
-                        <TextBlock Text="САЙТЫ ЧЕРЕЗ VPN" FontSize="11" FontWeight="SemiBold"
+                        <TextBlock Text="{DynamicResource S.SitesHeader}" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextTertiary}" Margin="2,12,0,8"
                                    Visibility="{Binding HasSites, Converter={StaticResource BoolVis}}"/>
                         <ItemsControl ItemsSource="{Binding TunneledSites}">
@@ -172,11 +175,11 @@
                                             <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Domain}" FontSize="13" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Text="через браузер" FontSize="11"
+                                                <TextBlock Text="{DynamicResource S.ViaBrowser}" FontSize="11"
                                                            Foreground="{StaticResource TextSecondary}"/>
                                             </StackPanel>
                                             <Button Grid.Column="2" Style="{StaticResource IconButton}" Content="✕"
-                                                    Width="30" Height="30" FontSize="12" ToolTip="Убрать"
+                                                    Width="30" Height="30" FontSize="12" ToolTip="{DynamicResource S.TipRemove}"
                                                     Command="{Binding DataContext.RemoveSiteCommand,
                                                               RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"/>
@@ -190,9 +193,9 @@
                                 BorderBrush="{StaticResource Stroke}" BorderThickness="1"
                                 Visibility="{Binding NothingTunneled, Converter={StaticResource BoolVis}}">
                             <StackPanel>
-                                <TextBlock Text="Пока ничего не выбрано" FontSize="13" FontWeight="SemiBold"
+                                <TextBlock Text="{DynamicResource S.EmptyTitle}" FontSize="13" FontWeight="SemiBold"
                                            HorizontalAlignment="Center" Foreground="{StaticResource TextSecondary}"/>
-                                <TextBlock Text="Добавьте приложение или сайт, чтобы направить трафик через VPN."
+                                <TextBlock Text="{DynamicResource S.EmptySub}"
                                            FontSize="11.5" Foreground="{StaticResource TextTertiary}"
                                            TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"/>
                             </StackPanel>
@@ -206,27 +209,27 @@
                         VerticalAlignment="Top"
                         Visibility="{Binding HasSubscription, Converter={StaticResource BoolVisInv}}">
                     <StackPanel>
-                        <TextBlock Text="Добавьте ключ VPN" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Вставьте ссылку-подписку (ключ от вашего VPN-бота). TunnelDeck сам загрузит список серверов."
+                        <TextBlock Text="{DynamicResource S.OnboardTitle}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{DynamicResource S.OnboardSub}"
                                    Foreground="{StaticResource TextSecondary}" FontSize="12.5" TextWrapping="Wrap"
                                    Margin="0,6,0,14"/>
-                        <Button Content="Вставить ключ подписки" Style="{StaticResource PrimaryButton}"
+                        <Button Content="{DynamicResource S.PasteKey}" Style="{StaticResource PrimaryButton}"
                                 Command="{Binding GoSubscriptionCommand}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Add button -->
-                <Button Grid.Row="4" Content="＋  Добавить приложение" Style="{StaticResource SecondaryButton}"
+                <Button Grid.Row="4" Content="{DynamicResource S.AddApp}" Style="{StaticResource SecondaryButton}"
                         Command="{Binding GoAddAppCommand}" Margin="0,10,0,0"
                         Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
 
                 <!-- Footer -->
                 <Grid Grid.Row="5" Margin="0,12,0,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                        <Button Style="{StaticResource LinkButton}" Content="↻ Обновить ключ"
+                        <Button Style="{StaticResource LinkButton}" Content="{DynamicResource S.RefreshKey}"
                                 Command="{Binding GoSubscriptionCommand}"
                                 Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
-                        <Button Style="{StaticResource LinkButton}" Content="🔎 Проверить" Margin="6,0,0,0"
+                        <Button Style="{StaticResource LinkButton}" Content="{DynamicResource S.Check}" Margin="6,0,0,0"
                                 Command="{Binding CheckCommand}"
                                 Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}}"/>
                     </StackPanel>
@@ -247,7 +250,7 @@
                 <StackPanel Grid.Row="0" Orientation="Horizontal">
                     <Button Style="{StaticResource IconButton}" Content="←" FontSize="17"
                             Command="{Binding GoBackCommand}"/>
-                    <TextBlock Text="Добавить приложение" FontSize="16" FontWeight="Bold"
+                    <TextBlock Text="{DynamicResource S.AddAppTitle}" FontSize="16" FontWeight="Bold"
                                VerticalAlignment="Center" Margin="6,0,0,0"/>
                 </StackPanel>
 
@@ -255,12 +258,11 @@
                     <TextBox x:Name="SearchBox" Style="{StaticResource Input}"
                              HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
                              Text="{Binding AddApp.Search, UpdateSourceTrigger=PropertyChanged}"/>
-                    <TextBlock Text="Поиск приложения…" IsHitTestVisible="False" VerticalAlignment="Center"
+                    <TextBlock Text="{DynamicResource S.SearchApp}" IsHitTestVisible="False" VerticalAlignment="Center"
                                HorizontalAlignment="Left" Margin="13,0,0,0" FontSize="13"
                                Foreground="{StaticResource TextTertiary}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
-                                <!-- Show only when empty AND not focused, so the caret never overlaps the hint. -->
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
                                     <MultiDataTrigger>
@@ -277,12 +279,11 @@
                 </Grid>
 
                 <Grid Grid.Row="2" Margin="0,10,0,0">
-                <!-- Preloader while the running-apps list is being built -->
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
                             Visibility="{Binding AddApp.IsLoading, Converter={StaticResource BoolVis}}">
                     <ProgressBar IsIndeterminate="True" Width="180" Height="4" Foreground="{StaticResource Accent}"
                                  Background="{StaticResource Stroke}" BorderThickness="0"/>
-                    <TextBlock Text="Загрузка приложений…" Margin="0,10,0,0" HorizontalAlignment="Center"
+                    <TextBlock Text="{DynamicResource S.LoadingApps}" Margin="0,10,0,0" HorizontalAlignment="Center"
                                FontSize="12.5" Foreground="{StaticResource TextSecondary}"/>
                 </StackPanel>
 
@@ -337,14 +338,14 @@
                 </Grid>
 
                 <StackPanel Grid.Row="3" Margin="0,12,0,0">
-                    <Button Content="Выбрать .exe вручную…" Style="{StaticResource SecondaryButton}"
+                    <Button Content="{DynamicResource S.BrowseExe}" Style="{StaticResource SecondaryButton}"
                             Command="{Binding BrowseAndAddCommand}"/>
-                    <Button Content="Добавить выбранное" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"
+                    <Button Content="{DynamicResource S.AddSelected}" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"
                             Command="{Binding AddSelectedRunningCommand}"
                             IsEnabled="{Binding AddApp.Selected, Converter={StaticResource BoolVis}}"/>
 
                     <Border Height="1" Background="{StaticResource Stroke}" Margin="0,14,0,10"/>
-                    <TextBlock Text="…или направить через VPN конкретный сайт в браузере:"
+                    <TextBlock Text="{DynamicResource S.SiteHint}"
                                FontSize="11.5" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
                     <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
@@ -374,7 +375,7 @@
                                 </TextBlock.Style>
                             </TextBlock>
                         </Grid>
-                        <Button Grid.Column="1" Content="Добавить сайт" Style="{StaticResource PrimaryButton}"
+                        <Button Grid.Column="1" Content="{DynamicResource S.AddSite}" Style="{StaticResource PrimaryButton}"
                                 Margin="8,0,0,0" Command="{Binding AddSiteCommand}"/>
                     </Grid>
                 </StackPanel>
@@ -390,7 +391,7 @@
                 <StackPanel Grid.Row="0" Orientation="Horizontal">
                     <Button Style="{StaticResource IconButton}" Content="←" FontSize="17"
                             Command="{Binding GoBackCommand}"/>
-                    <TextBlock Text="Настройки" FontSize="16" FontWeight="Bold"
+                    <TextBlock Text="{DynamicResource S.SettingsTitle}" FontSize="16" FontWeight="Bold"
                                VerticalAlignment="Center" Margin="6,0,0,0"/>
                 </StackPanel>
 
@@ -398,11 +399,10 @@
                     <Border Background="{StaticResource Card}" CornerRadius="8" BorderBrush="{StaticResource Stroke}"
                             BorderThickness="1">
                         <StackPanel>
-                            <!-- row -->
                             <Grid Margin="14,13">
                                 <StackPanel Margin="0,0,54,0">
-                                    <TextBlock Text="Запускать с Windows" FontSize="13" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Открывать TunnelDeck при входе в систему." FontSize="11.5"
+                                    <TextBlock Text="{DynamicResource S.StartWin}" FontSize="13" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{DynamicResource S.StartWinSub}" FontSize="11.5"
                                                Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
@@ -411,8 +411,8 @@
                             <Border Height="1" Background="{StaticResource Stroke}"/>
                             <Grid Margin="14,13">
                                 <StackPanel Margin="0,0,54,0">
-                                    <TextBlock Text="Автоподключение при старте" FontSize="13" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Подключать VPN сразу после запуска." FontSize="11.5"
+                                    <TextBlock Text="{DynamicResource S.AutoConnect}" FontSize="13" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{DynamicResource S.AutoConnectSub}" FontSize="11.5"
                                                Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
@@ -422,7 +422,7 @@
                             <Grid Margin="14,13">
                                 <StackPanel Margin="0,0,54,0">
                                     <TextBlock Text="Kill-switch" FontSize="13" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Перезапускать ядро при сбое, чтобы трафик выбранных приложений не утёк." FontSize="11.5"
+                                    <TextBlock Text="{DynamicResource S.KillSwitchSub}" FontSize="11.5"
                                                Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
@@ -431,8 +431,8 @@
                             <Border Height="1" Background="{StaticResource Stroke}"/>
                             <Grid Margin="14,13">
                                 <StackPanel Margin="0,0,54,0">
-                                    <TextBlock Text="DNS через VPN" FontSize="13" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Резолвить DNS выбранных приложений через прокси (защита от утечек)." FontSize="11.5"
+                                    <TextBlock Text="{DynamicResource S.DnsVpn}" FontSize="13" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{DynamicResource S.DnsVpnSub}" FontSize="11.5"
                                                Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
@@ -441,12 +441,26 @@
                             <Border Height="1" Background="{StaticResource Stroke}"/>
                             <Grid Margin="14,13">
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="Уровень логов" FontSize="13" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Детализация логов ядра sing-box." FontSize="11.5"
+                                    <TextBlock Text="{DynamicResource S.LogLevel}" FontSize="13" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{DynamicResource S.LogLevelSub}" FontSize="11.5"
                                                Foreground="{StaticResource TextSecondary}"/>
                                 </StackPanel>
                                 <ComboBox Width="130" HorizontalAlignment="Right" VerticalAlignment="Center"
                                           ItemsSource="{Binding LogLevels}" SelectedItem="{Binding LogLevel}"/>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource Stroke}"/>
+                            <Grid Margin="14,13">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{DynamicResource S.Language}" FontSize="13" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{DynamicResource S.LanguageSub}" FontSize="11.5"
+                                               Foreground="{StaticResource TextSecondary}"/>
+                                </StackPanel>
+                                <ComboBox Width="130" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                          SelectedValuePath="Tag" SelectedValue="{Binding Language}">
+                                    <ComboBoxItem Content="{DynamicResource S.LangAuto}" Tag="system"/>
+                                    <ComboBoxItem Content="Русский" Tag="ru"/>
+                                    <ComboBoxItem Content="English" Tag="en"/>
+                                </ComboBox>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -466,20 +480,20 @@
                 <StackPanel Grid.Row="0" Orientation="Horizontal">
                     <Button Style="{StaticResource IconButton}" Content="←" FontSize="17"
                             Command="{Binding GoBackCommand}"/>
-                    <TextBlock Text="Ключ подписки" FontSize="16" FontWeight="Bold"
+                    <TextBlock Text="{DynamicResource S.SubTitle}" FontSize="16" FontWeight="Bold"
                                VerticalAlignment="Center" Margin="6,0,0,0"/>
                 </StackPanel>
 
                 <TextBlock Grid.Row="1" Margin="2,14,0,0" TextWrapping="Wrap" FontSize="12.5"
                            Foreground="{StaticResource TextSecondary}"
-                           Text="Вставьте ссылку-подписку от вашего VPN (та, что прислал бот), или ключ vless://."/>
+                           Text="{DynamicResource S.SubDesc}"/>
 
                 <Grid Grid.Row="2" Margin="0,12,0,0">
                     <TextBox x:Name="SubBox" Style="{StaticResource Input}"
                              Text="{Binding SubscriptionInput, UpdateSourceTrigger=PropertyChanged}"
                              TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top"
                              VerticalScrollBarVisibility="Auto"/>
-                    <TextBlock Text="https://…  или  vless://…" IsHitTestVisible="False" VerticalAlignment="Top"
+                    <TextBlock Text="https://…  |  vless://…" IsHitTestVisible="False" VerticalAlignment="Top"
                                Margin="13,10,0,0" FontSize="13" Foreground="{StaticResource TextTertiary}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
@@ -497,7 +511,7 @@
                 <TextBlock Grid.Row="3" Text="{Binding StatusDetail}" Margin="2,10,0,0" TextWrapping="Wrap"
                            FontSize="11.5" Foreground="{StaticResource TextSecondary}"/>
 
-                <Button Grid.Row="4" Content="Загрузить серверы" Style="{StaticResource PrimaryButton}"
+                <Button Grid.Row="4" Content="{DynamicResource S.LoadServers}" Style="{StaticResource PrimaryButton}"
                         Margin="0,12,0,0" Command="{Binding LoadSubscriptionCommand}"/>
             </Grid>
         </Grid>

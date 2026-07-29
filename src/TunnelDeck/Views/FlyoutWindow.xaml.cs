@@ -36,4 +36,9 @@ public partial class FlyoutWindow : Window
         if (DataContext is MainViewModel vm && vm.AddSelectedRunningCommand.CanExecute(null))
             vm.AddSelectedRunningCommand.Execute(null);
     }
+
+    private void ServerBox_DropDownOpened(object? sender, EventArgs e)
+    {
+        if (DataContext is MainViewModel vm) vm.MeasurePings();
+    }
 }
