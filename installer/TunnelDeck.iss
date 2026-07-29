@@ -66,3 +66,19 @@ Filename: "taskkill.exe"; Parameters: "/f /im sing-box.exe /t"; Flags: runhidden
 
 [Messages]
 russian.WelcomeLabel2=Программа установит [name/ver] на ваш компьютер.%n%nTunnelDeck направляет через VPN только выбранные вами приложения. Будет установлен сетевой драйвер (Windows Packet Filter), необходимый для работы.
+
+[Code]
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
+begin
+  // Close a running instance BEFORE copying files, otherwise the locked .exe would
+  // not be replaced and the user would keep running the old version.
+  if CurStep = ssInstall then
+  begin
+    Exec('taskkill.exe', '/f /im TunnelDeck.exe /t', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Exec('taskkill.exe', '/f /im ProxiFyre.exe /t', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Exec('taskkill.exe', '/f /im sing-box.exe /t', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Sleep(700);
+  end;
+end;
