@@ -51,6 +51,17 @@
                                    FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"
                                    Visibility="{Binding StatusDetail, Converter={StaticResource BoolVis}}"/>
 
+                        <!-- Total tunnel throughput (while connected) -->
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
+                                    Visibility="{Binding ShowSpeed, Converter={StaticResource BoolVis}}">
+                            <TextBlock Text="↓" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Green}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding TotalDownText}" FontSize="12" Margin="4,0,14,0"
+                                       Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                            <TextBlock Text="↑" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Accent}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding TotalUpText}" FontSize="12" Margin="4,0,0,0"
+                                       Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                        </StackPanel>
+
                         <ComboBox ItemsSource="{Binding Servers}" SelectedItem="{Binding SelectedServer}"
                                   Margin="0,14,0,0"
                                   Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}">
@@ -96,19 +107,7 @@
                                                 <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Text="{Binding ProcessName}" FontSize="11"
-                                                           Foreground="{StaticResource TextSecondary}"
-                                                           Visibility="{Binding ShowSpeed, Converter={StaticResource BoolVisInv}}"/>
-                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
-                                                            Visibility="{Binding ShowSpeed, Converter={StaticResource BoolVis}}">
-                                                    <TextBlock Text="↓" FontSize="11" FontWeight="Bold"
-                                                               Foreground="{StaticResource Green}" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="{Binding DownText}" FontSize="11" Margin="3,0,10,0"
-                                                               Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="↑" FontSize="11" FontWeight="Bold"
-                                                               Foreground="{StaticResource Accent}" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="{Binding UpText}" FontSize="11" Margin="3,0,0,0"
-                                                               Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center"/>
-                                                </StackPanel>
+                                                           Foreground="{StaticResource TextSecondary}"/>
                                             </StackPanel>
                                             <ToggleButton Grid.Column="2" Style="{StaticResource Switch}"
                                                           IsChecked="{Binding Enabled}" VerticalAlignment="Center"/>

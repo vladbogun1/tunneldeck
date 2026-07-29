@@ -4,31 +4,27 @@ using System.Text.Json;
 
 namespace TunnelDeck.Services;
 
-public readonly record struct ProcessSpeed(long UploadBps, long DownloadBps);
-
 /// <summary>
-/// Polls the sing-box Clash API (<c>/connections</c>) once per second and reports
-/// per-process upload/download speed (bytes per second), keyed by process image
-/// name (e.g. "chrome.exe"). Speed is computed from the per-connection cumulative
-/// byte counters between polls; brand-new connections are seeded (counted from
-/// their first sighting) to avoid spikes.
+/// Polls the sing-box Clash API and reports the total tunnel throughput
+/// (bytes/sec, up and down). Per-process attribution isn't possible in proxy mode
+/// (sing-box sees connections from ProxiFyre, not the real app), so we report the
+/// aggregate from the cumulative downloadTotal/uploadTotal counters.
 /// </summary>
 public sealed class TrafficStatsService
 {
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(3) };
     private CancellationTokenSource? _cts;
 
-    // connection id -> (upload, download) cumulative bytes at last poll
-    private Dictionary<string, (long up, long down)> _prev = new();
-    private long _lastTicks;
+    private long _prevUp, _prevDown, _lastTicks;
+    private bool _hasPrev;
 
-    public event EventHandler<IReadOnlyDictionary<string, ProcessSpeed>>? Updated;
+    /// <summary>(upBps, downBps)</summary>
+    public event EventHandler<(long up, long down)>? Updated;
 
     public void Start()
     {
         Stop();
-        _prev = new Dictionary<string, (long, long)>();
-        _lastTicks = Stopwatch.GetTimestamp();
+        _hasPrev = false;
         _cts = new CancellationTokenSource();
         _ = LoopAsync(_cts.Token);
     }
@@ -37,6 +33,7 @@ public sealed class TrafficStatsService
     {
         try { _cts?.Cancel(); } catch { }
         _cts = null;
+        Updated?.Invoke(this, (0, 0));
     }
 
     private async Task LoopAsync(CancellationToken ct)
@@ -47,77 +44,44 @@ public sealed class TrafficStatsService
             try
             {
                 var json = await _http.GetStringAsync(url, ct);
-                var speeds = Compute(json);
-                Updated?.Invoke(this, speeds);
+                var (up, down) = ComputeSpeed(json);
+                Updated?.Invoke(this, (up, down));
             }
             catch
             {
-                // API not up yet / transient — ignore and retry.
+                // API not up yet / transient — report nothing this tick.
             }
-
             try { await Task.Delay(1000, ct); } catch { break; }
         }
     }
 
-    private IReadOnlyDictionary<string, ProcessSpeed> Compute(string json)
+    private (long up, long down) ComputeSpeed(string json)
     {
+        long up = 0, down = 0;
+        using (var doc = JsonDocument.Parse(json))
+        {
+            var root = doc.RootElement;
+            if (root.TryGetProperty("uploadTotal", out var u) && u.TryGetInt64(out var uu)) up = uu;
+            if (root.TryGetProperty("downloadTotal", out var d) && d.TryGetInt64(out var dd)) down = dd;
+        }
+
         var now = Stopwatch.GetTimestamp();
-        var elapsed = (now - _lastTicks) / (double)Stopwatch.Frequency;
+        var elapsed = _hasPrev ? (now - _lastTicks) / (double)Stopwatch.Frequency : 1.0;
         if (elapsed <= 0.05) elapsed = 1.0;
-        _lastTicks = now;
 
-        var current = new Dictionary<string, (long up, long down)>();
-        var upByProc = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-        var downByProc = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-
-        using var doc = JsonDocument.Parse(json);
-        if (doc.RootElement.TryGetProperty("connections", out var conns) &&
-            conns.ValueKind == JsonValueKind.Array)
+        long upBps = 0, downBps = 0;
+        if (_hasPrev)
         {
-            foreach (var c in conns.EnumerateArray())
-            {
-                var id = GetString(c, "id");
-                if (id.Length == 0) continue;
-
-                long up = GetLong(c, "upload");
-                long down = GetLong(c, "download");
-                current[id] = (up, down);
-
-                string proc = "";
-                if (c.TryGetProperty("metadata", out var meta) && meta.ValueKind == JsonValueKind.Object)
-                    proc = GetString(meta, "process");
-                if (proc.Length == 0) continue;
-
-                // Delta since last poll (0 for a connection we've not seen before).
-                long dUp = 0, dDown = 0;
-                if (_prev.TryGetValue(id, out var p))
-                {
-                    dUp = Math.Max(0, up - p.up);
-                    dDown = Math.Max(0, down - p.down);
-                }
-
-                upByProc[proc] = upByProc.GetValueOrDefault(proc) + dUp;
-                downByProc[proc] = downByProc.GetValueOrDefault(proc) + dDown;
-            }
+            // Guard against counter resets (core restart).
+            var du = up >= _prevUp ? up - _prevUp : 0;
+            var dd = down >= _prevDown ? down - _prevDown : 0;
+            upBps = (long)(du / elapsed);
+            downBps = (long)(dd / elapsed);
         }
 
-        _prev = current;
-
-        var result = new Dictionary<string, ProcessSpeed>(StringComparer.OrdinalIgnoreCase);
-        foreach (var proc in upByProc.Keys.Union(downByProc.Keys))
-        {
-            var up = (long)(upByProc.GetValueOrDefault(proc) / elapsed);
-            var down = (long)(downByProc.GetValueOrDefault(proc) / elapsed);
-            result[proc] = new ProcessSpeed(up, down);
-        }
-        return result;
+        _prevUp = up; _prevDown = down; _lastTicks = now; _hasPrev = true;
+        return (upBps, downBps);
     }
-
-    private static string GetString(JsonElement el, string name) =>
-        el.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
-
-    private static long GetLong(JsonElement el, string name) =>
-        el.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var n) ? n : 0;
 
     public static string Format(long bytesPerSec)
     {

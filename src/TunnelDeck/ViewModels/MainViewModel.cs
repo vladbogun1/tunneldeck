@@ -29,6 +29,11 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private string _addSiteInput = "";
 
+    // Total tunnel throughput (shown in the connect card while connected)
+    [ObservableProperty] private bool _showSpeed;
+    [ObservableProperty] private string _totalDownText = "0 Б/с";
+    [ObservableProperty] private string _totalUpText = "0 Б/с";
+
     [ObservableProperty] private Page _currentPage = Page.Main;
     [ObservableProperty] private AddAppViewModel? _addApp;
     [ObservableProperty] private string _subscriptionInput = "";
@@ -95,26 +100,24 @@ public sealed partial class MainViewModel : ObservableObject
         TunneledApps.CollectionChanged += (_, _) => { OnPropertyChanged(nameof(HasApps)); OnPropertyChanged(nameof(NothingTunneled)); };
         TunneledSites.CollectionChanged += (_, _) => { OnPropertyChanged(nameof(HasSites)); OnPropertyChanged(nameof(NothingTunneled)); };
 
-        _stats.Updated += (_, speeds) => OnUi(() =>
+        _stats.Updated += (_, s) => OnUi(() =>
         {
-            foreach (var app in TunneledApps)
-            {
-                if (speeds.TryGetValue(app.ProcessName, out var s)) app.SetSpeed(s.UploadBps, s.DownloadBps);
-                else app.SetSpeed(0, 0);
-            }
+            TotalUpText = TrafficStatsService.Format(s.up);
+            TotalDownText = TrafficStatsService.Format(s.down);
         });
     }
 
     private void StartStats()
     {
-        foreach (var app in TunneledApps) app.ShowSpeed = true;
+        ShowSpeed = true;
         _stats.Start();
     }
 
     private void StopStats()
     {
         _stats.Stop();
-        foreach (var app in TunneledApps) { app.ShowSpeed = false; app.SetSpeed(0, 0); }
+        ShowSpeed = false;
+        TotalUpText = TotalDownText = "0 Б/с";
     }
 
     public event EventHandler<ConnectionStatus>? ConnectionChanged;
@@ -288,9 +291,7 @@ public sealed partial class MainViewModel : ObservableObject
             return;
 
         _state.TunneledApps.Add(app);
-        var vm = Wrap(app);
-        vm.ShowSpeed = Status == ConnectionStatus.Connected;
-        TunneledApps.Add(vm);
+        TunneledApps.Add(Wrap(app));
         Persist();
         SafeApply();
     }
