@@ -274,16 +274,29 @@
 
                 <!-- Footer -->
                 <Grid Grid.Row="5" Margin="0,12,0,0">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                        <Button Style="{StaticResource ChipButton}" Content="{DynamicResource S.RefreshKey}"
-                                Command="{Binding GoSubscriptionCommand}"
-                                Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
-                        <Button x:Name="CheckBtn" Style="{StaticResource ChipButton}" Content="{DynamicResource S.Check}" Margin="7,0,0,0"
-                                Command="{Binding CheckCommand}"
-                                Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}}"/>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                        <!-- Check result: transient tooltip-style popup above the button -->
-                        <Popup PlacementTarget="{Binding ElementName=CheckBtn}" Placement="Top"
+                    <Button Grid.Column="0" Style="{StaticResource ChipButton}" HorizontalAlignment="Stretch"
+                            Content="{DynamicResource S.RefreshKey}" Command="{Binding GoSubscriptionCommand}"
+                            Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
+                    <Button x:Name="CheckBtn" Grid.Column="1" Style="{StaticResource ChipButton}" HorizontalAlignment="Stretch"
+                            Margin="8,0,8,0" Content="{DynamicResource S.Check}" Command="{Binding CheckCommand}"
+                            Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}}"/>
+                    <Button Grid.Column="2" Style="{StaticResource ChipButton}" HorizontalAlignment="Stretch"
+                            Content="{DynamicResource S.Connections}" Command="{Binding GoConnectionsCommand}"
+                            Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}}"/>
+
+                    <TextBlock Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding CoreVersion}"
+                               HorizontalAlignment="Right" VerticalAlignment="Center"
+                               FontSize="10.5" Foreground="{DynamicResource TextTertiary}"
+                               Visibility="{Binding IsConnected, Converter={StaticResource BoolVisInv}}"/>
+
+                    <!-- Check result: transient tooltip-style popup above the button -->
+                    <Popup Grid.Column="1" PlacementTarget="{Binding ElementName=CheckBtn}" Placement="Top"
                                AllowsTransparency="True" PopupAnimation="Fade" StaysOpen="False"
                                VerticalOffset="-6" HorizontalOffset="-8"
                                IsOpen="{Binding CheckResultVisible, Mode=TwoWay}" Opened="CheckPopup_Opened">
@@ -320,14 +333,6 @@
                                 </StackPanel>
                             </Border>
                         </Popup>
-
-                        <Button Style="{StaticResource ChipButton}" Content="{DynamicResource S.Connections}" Margin="7,0,0,0"
-                                Command="{Binding GoConnectionsCommand}"
-                                Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}}"/>
-                    </StackPanel>
-                    <TextBlock Text="{Binding CoreVersion}" HorizontalAlignment="Right" VerticalAlignment="Center"
-                               FontSize="10.5" Foreground="{DynamicResource TextTertiary}"
-                               Visibility="{Binding IsConnected, Converter={StaticResource BoolVisInv}}"/>
                 </Grid>
             </Grid>
 
