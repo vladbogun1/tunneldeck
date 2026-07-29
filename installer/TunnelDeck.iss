@@ -54,7 +54,9 @@ Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 ; Silently install the Windows Packet Filter driver (required by ProxiFyre).
 Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\Windows.Packet.Filter.x64.msi"" /qn /norestart"; \
   StatusMsg: "Установка сетевого драйвера…"; Flags: waituntilterminated
-Filename: "{app}\{#AppExe}"; Description: "Запустить {#AppName}"; Flags: nowait postinstall skipifsilent
+; shellexec so the requireAdministrator app launches via ShellExecute (UAC) instead of
+; CreateProcess (which fails with error 740 "operation requires elevation").
+Filename: "{app}\{#AppExe}"; Description: "Запустить {#AppName}"; Flags: nowait postinstall skipifsilent shellexec
 
 [UninstallRun]
 ; Stop the app before uninstalling.
