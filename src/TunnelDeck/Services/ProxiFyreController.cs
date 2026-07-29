@@ -21,13 +21,6 @@ public sealed class ProxiFyreController
         get { lock (_gate) return _process is { HasExited: false }; }
     }
 
-    /// <summary>Common browser executables, redirected into the "split" proxy for site mode.</summary>
-    private static readonly string[] KnownBrowsers =
-    {
-        "chrome.exe", "msedge.exe", "firefox.exe", "brave.exe",
-        "opera.exe", "vivaldi.exe", "browser.exe" // browser.exe = Yandex Browser
-    };
-
     /// <summary>Write ProxiFyre's app-config.json from tunneled apps (+ browsers for sites).</summary>
     public void WriteConfig(IReadOnlyList<TunneledApp> apps, IReadOnlyList<string> sites)
     {
@@ -57,7 +50,8 @@ public sealed class ProxiFyreController
             var fullNames = new HashSet<string>(
                 apps.Where(a => a.Enabled).Select(a => a.ProcessName),
                 StringComparer.OrdinalIgnoreCase);
-            var browsers = KnownBrowsers.Where(b => !fullNames.Contains(b)).ToList();
+            var browsers = BrowserDetector.GetBrowserExeNames()
+                .Where(b => !fullNames.Contains(b)).ToList();
             if (browsers.Count > 0)
             {
                 proxies.Add(new Dictionary<string, object?>
