@@ -98,6 +98,35 @@ Check("proxy: quic reject", proxyJson.Contains("\"action\": \"reject\""));
 var proxyOut = Environment.GetEnvironmentVariable("SELFTEST_PROXY_CONFIG_OUT");
 if (!string.IsNullOrWhiteSpace(proxyOut)) System.IO.File.WriteAllText(proxyOut, proxyJson);
 
+Console.WriteLine("\n== Multi-protocol URI parsing ==");
+var trojan = VlessParser.ParseMany("trojan://s3cret@trojan.example.com:443?security=tls&sni=trojan.example.com&type=tcp#Trojan")[0];
+Check("trojan proto", trojan.Protocol == "trojan");
+Check("trojan pass", trojan.Password == "s3cret");
+Check("trojan tls", trojan.Security == "tls");
+
+var vmessJson = "{\"v\":\"2\",\"ps\":\"Vmess\",\"add\":\"vmess.example.com\",\"port\":\"443\",\"id\":\"11111111-2222-3333-4444-555555555555\",\"aid\":\"0\",\"scy\":\"auto\",\"net\":\"ws\",\"host\":\"vmess.example.com\",\"path\":\"/ws\",\"tls\":\"tls\",\"sni\":\"vmess.example.com\"}";
+var vmessUri = "vmess://" + Convert.ToBase64String(Encoding.UTF8.GetBytes(vmessJson));
+var vmess = VlessParser.ParseMany(vmessUri)[0];
+Check("vmess proto", vmess.Protocol == "vmess");
+Check("vmess uuid", vmess.Uuid == "11111111-2222-3333-4444-555555555555");
+Check("vmess ws", vmess.Transport == "ws");
+
+var ssUri = "ss://" + Convert.ToBase64String(Encoding.UTF8.GetBytes("aes-256-gcm:sspass")) + "@ss.example.com:8388#SS";
+var ss = VlessParser.ParseMany(ssUri)[0];
+Check("ss proto", ss.Protocol == "shadowsocks");
+Check("ss method", ss.Method == "aes-256-gcm");
+Check("ss pass", ss.Password == "sspass");
+Check("ss port", ss.Port == 8388);
+
+var protoDir = Environment.GetEnvironmentVariable("SELFTEST_PROTO_DIR");
+if (!string.IsNullOrWhiteSpace(protoDir))
+{
+    var st = new AppSettings();
+    System.IO.File.WriteAllText(System.IO.Path.Combine(protoDir, "trojan.json"), SingBoxConfigBuilder.BuildProxyMode(trojan, st));
+    System.IO.File.WriteAllText(System.IO.Path.Combine(protoDir, "vmess.json"), SingBoxConfigBuilder.BuildProxyMode(vmess, st));
+    System.IO.File.WriteAllText(System.IO.Path.Combine(protoDir, "ss.json"), SingBoxConfigBuilder.BuildProxyMode(ss, st));
+}
+
 var xJson = SingBoxConfigBuilder.Build(xServers[0], apps, new AppSettings());
 var xOut = Environment.GetEnvironmentVariable("SELFTEST_XRAY_CONFIG_OUT");
 if (!string.IsNullOrWhiteSpace(xOut))

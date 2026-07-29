@@ -12,6 +12,19 @@ public sealed class ServerConfig
     /// <summary>Display name (from the URI fragment, e.g. "NL-1").</summary>
     public string Name { get; set; } = "Server";
 
+    /// <summary>Outbound protocol: vless | vmess | trojan | shadowsocks.</summary>
+    public string Protocol { get; set; } = "vless";
+
+    /// <summary>Password (trojan / shadowsocks).</summary>
+    public string Password { get; set; } = "";
+
+    /// <summary>Encryption method (shadowsocks), e.g. aes-256-gcm.</summary>
+    public string Method { get; set; } = "";
+
+    /// <summary>vmess alterId (usually 0) and cipher (auto).</summary>
+    public int AlterId { get; set; } = 0;
+    public string VmessSecurity { get; set; } = "auto";
+
     public string Server { get; set; } = "";
     public int Port { get; set; } = 443;
     public string Uuid { get; set; } = "";

@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Net;
+using System.Net.Http;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -298,6 +300,42 @@ public sealed partial class MainViewModel : ObservableObject
         finally { IsBusy = false; }
     }
 
+    /// <summary>Query the exit IP/country THROUGH the VPN proxy to confirm the tunnel works.</summary>
+    [RelayCommand]
+    private async Task CheckAsync()
+    {
+        if (!IsConnected) { StatusDetail = "Сначала подключитесь."; return; }
+        try
+        {
+            StatusDetail = "Проверка выхода…";
+            var handler = new HttpClientHandler
+            {
+                Proxy = new WebProxy($"socks5://{SingBoxConfigBuilder.SocksEndpoint}"),
+                UseProxy = true
+            };
+            using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
+            http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "curl/8");
+            var trace = await http.GetStringAsync("https://www.cloudflare.com/cdn-cgi/trace");
+            var ip = TraceField(trace, "ip");
+            var loc = TraceField(trace, "loc");
+            StatusDetail = string.IsNullOrEmpty(ip)
+                ? "Проверка: ответ пустой."
+                : $"Выход через VPN: {ip}" + (string.IsNullOrEmpty(loc) ? "" : $" · {loc}");
+        }
+        catch (Exception ex)
+        {
+            StatusDetail = "Проверка не удалась: " + ex.Message;
+        }
+    }
+
+    private static string TraceField(string trace, string key)
+    {
+        foreach (var line in trace.Split('\n'))
+            if (line.StartsWith(key + "=", StringComparison.OrdinalIgnoreCase))
+                return line[(key.Length + 1)..].Trim();
+        return "";
+    }
+
     private async Task ApplyIfRunningAsync()
     {
         if (SelectedServer is null) return;
@@ -433,6 +471,28 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     // ---- Server selection ------------------------------------------------
+
+    /// <summary>Ping all servers and select the fastest reachable one.</summary>
+    [RelayCommand]
+    private async Task PickFastestAsync()
+    {
+        var servers = _state.Servers.Where(s => s.Server != "0.0.0.0" && !string.IsNullOrWhiteSpace(s.Server)).ToList();
+        if (servers.Count == 0) return;
+
+        IsBusy = true;
+        StatusDetail = "Замер пинга…";
+        try
+        {
+            var results = await Task.WhenAll(servers.Select(async s =>
+                (server: s, ping: await PingService.TcpPingAsync(s.Server, s.Port))));
+
+            var best = results.Where(r => r.ping >= 0).OrderBy(r => r.ping).FirstOrDefault();
+            if (best.server is null) { StatusDetail = "Ни один сервер не отвечает."; return; }
+            SelectedServer = best.server;
+            StatusDetail = $"Быстрейший: {best.server.Name} · {best.ping} мс";
+        }
+        finally { IsBusy = false; }
+    }
 
     partial void OnSelectedServerChanged(ServerConfig? value)
     {

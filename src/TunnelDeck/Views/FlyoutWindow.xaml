@@ -83,16 +83,24 @@
                                        Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
                         </StackPanel>
 
-                        <ComboBox ItemsSource="{Binding Servers}" SelectedItem="{Binding SelectedServer}"
-                                  Margin="0,14,0,0"
-                                  Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Name, Converter={StaticResource StripEmoji}}"
-                                               TextTrimming="CharacterEllipsis"/>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
+                        <Grid Margin="0,14,0,0"
+                              Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox Grid.Column="0" ItemsSource="{Binding Servers}" SelectedItem="{Binding SelectedServer}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name, Converter={StaticResource StripEmoji}}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Grid.Column="1" Content="⚡" ToolTip="Выбрать быстрейший (пинг)"
+                                    Style="{StaticResource SecondaryButton}" Width="42" Padding="0" Margin="8,0,0,0"
+                                    Command="{Binding PickFastestCommand}"/>
+                        </Grid>
 
                         <Button Content="{Binding ConnectLabel}" Style="{StaticResource PrimaryButton}"
                                 Command="{Binding ToggleConnectionCommand}" Margin="0,10,0,0"
@@ -214,9 +222,14 @@
 
                 <!-- Footer -->
                 <Grid Grid.Row="5" Margin="0,12,0,0">
-                    <Button Style="{StaticResource LinkButton}" HorizontalAlignment="Left" Content="↻ Обновить ключ"
-                            Command="{Binding GoSubscriptionCommand}"
-                            Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <Button Style="{StaticResource LinkButton}" Content="↻ Обновить ключ"
+                                Command="{Binding GoSubscriptionCommand}"
+                                Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
+                        <Button Style="{StaticResource LinkButton}" Content="🔎 Проверить" Margin="6,0,0,0"
+                                Command="{Binding CheckCommand}"
+                                Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}}"/>
+                    </StackPanel>
                     <TextBlock Text="{Binding CoreVersion}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                FontSize="10.5" Foreground="{StaticResource TextTertiary}"/>
                 </Grid>

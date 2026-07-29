@@ -34,7 +34,7 @@ public partial class App : Application
         Paths.EnsureDirs();
 
         _vm = new MainViewModel();
-        _vm.ConnectionChanged += (_, status) => UpdateTray(status);
+        _vm.ConnectionChanged += (_, status) => { UpdateTray(status); Notify(status); };
 
         _flyout = new FlyoutWindow { DataContext = _vm };
 
@@ -113,6 +113,31 @@ public partial class App : Application
         }
         catch (ObjectDisposedException) { /* tray gone during shutdown */ }
         catch (Exception ex) { Log("UpdateTray", ex); }
+    }
+
+    private ConnectionStatus _lastNotified = ConnectionStatus.Disconnected;
+
+    private void Notify(ConnectionStatus status)
+    {
+        if (_tray is null || _shuttingDown || status == _lastNotified) return;
+        var prev = _lastNotified;
+        _lastNotified = status;
+        try
+        {
+            switch (status)
+            {
+                case ConnectionStatus.Connected:
+                    _tray.ShowNotification("TunnelDeck", _vm?.StatusDetail is { Length: > 0 } d ? d : "Подключено");
+                    break;
+                case ConnectionStatus.Error:
+                    _tray.ShowNotification("TunnelDeck — ошибка", _vm?.StatusDetail is { Length: > 0 } e ? e : "Не удалось подключиться");
+                    break;
+                case ConnectionStatus.Disconnected when prev == ConnectionStatus.Connected:
+                    _tray.ShowNotification("TunnelDeck", "VPN отключён");
+                    break;
+            }
+        }
+        catch (Exception ex) { Log("Notify", ex); }
     }
 
     private void ToggleFlyout()

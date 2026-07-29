@@ -257,51 +257,78 @@ public static class SingBoxConfigBuilder
 
     private static object BuildProxyOutbound(ServerConfig s)
     {
-        var outbound = new Dictionary<string, object?>
+        var o = new Dictionary<string, object?>
         {
-            ["type"] = "vless",
             ["tag"] = "proxy",
             ["server"] = s.Server,
-            ["server_port"] = s.Port,
-            ["uuid"] = s.Uuid,
-            ["packet_encoding"] = "xudp"
+            ["server_port"] = s.Port
         };
 
-        if (!string.IsNullOrWhiteSpace(s.Flow))
-            outbound["flow"] = s.Flow;
-
-        // TLS / Reality
-        if (s.Security is "reality" or "tls")
+        switch ((s.Protocol ?? "vless").ToLowerInvariant())
         {
-            var tls = new Dictionary<string, object?>
-            {
-                ["enabled"] = true,
-                ["server_name"] = string.IsNullOrWhiteSpace(s.Sni) ? s.Server : s.Sni,
-                ["utls"] = new Dictionary<string, object?>
-                {
-                    ["enabled"] = true,
-                    ["fingerprint"] = string.IsNullOrWhiteSpace(s.Fingerprint) ? "chrome" : s.Fingerprint
-                }
-            };
+            case "vmess":
+                o["type"] = "vmess";
+                o["uuid"] = s.Uuid;
+                o["alter_id"] = s.AlterId;
+                o["security"] = string.IsNullOrWhiteSpace(s.VmessSecurity) ? "auto" : s.VmessSecurity;
+                AddTls(o, s); AddTransport(o, s);
+                break;
 
-            if (s.Security == "reality")
-            {
-                tls["reality"] = new Dictionary<string, object?>
-                {
-                    ["enabled"] = true,
-                    ["public_key"] = s.PublicKey,
-                    ["short_id"] = s.ShortId
-                };
-            }
+            case "trojan":
+                o["type"] = "trojan";
+                o["password"] = s.Password;
+                AddTls(o, s); AddTransport(o, s);
+                break;
 
-            outbound["tls"] = tls;
+            case "shadowsocks":
+                o["type"] = "shadowsocks";
+                o["method"] = string.IsNullOrWhiteSpace(s.Method) ? "aes-256-gcm" : s.Method;
+                o["password"] = s.Password;
+                break;
+
+            default: // vless
+                o["type"] = "vless";
+                o["uuid"] = s.Uuid;
+                o["packet_encoding"] = "xudp";
+                if (!string.IsNullOrWhiteSpace(s.Flow)) o["flow"] = s.Flow;
+                AddTls(o, s); AddTransport(o, s);
+                break;
         }
 
-        // Transport
+        return o;
+    }
+
+    private static void AddTls(Dictionary<string, object?> o, ServerConfig s)
+    {
+        if (s.Security is not ("reality" or "tls")) return;
+        var tls = new Dictionary<string, object?>
+        {
+            ["enabled"] = true,
+            ["server_name"] = string.IsNullOrWhiteSpace(s.Sni) ? s.Server : s.Sni,
+            ["utls"] = new Dictionary<string, object?>
+            {
+                ["enabled"] = true,
+                ["fingerprint"] = string.IsNullOrWhiteSpace(s.Fingerprint) ? "chrome" : s.Fingerprint
+            }
+        };
+        if (s.Security == "reality")
+        {
+            tls["reality"] = new Dictionary<string, object?>
+            {
+                ["enabled"] = true,
+                ["public_key"] = s.PublicKey,
+                ["short_id"] = s.ShortId
+            };
+        }
+        o["tls"] = tls;
+    }
+
+    private static void AddTransport(Dictionary<string, object?> o, ServerConfig s)
+    {
         switch (s.Transport)
         {
             case "ws":
-                outbound["transport"] = new Dictionary<string, object?>
+                o["transport"] = new Dictionary<string, object?>
                 {
                     ["type"] = "ws",
                     ["path"] = string.IsNullOrWhiteSpace(s.WsPath) ? "/" : s.WsPath,
@@ -311,16 +338,14 @@ public static class SingBoxConfigBuilder
                 };
                 break;
             case "grpc":
-                outbound["transport"] = new Dictionary<string, object?>
+                o["transport"] = new Dictionary<string, object?>
                 {
                     ["type"] = "grpc",
                     ["service_name"] = s.GrpcServiceName
                 };
                 break;
-            // "tcp" and unknown -> no transport block (raw TCP)
+            // "tcp"/unknown -> raw TCP (no transport block)
         }
-
-        return outbound;
     }
 
     private static object BuildRoute(List<string> tunneledNames)

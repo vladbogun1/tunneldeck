@@ -12,6 +12,8 @@ A modern tray app that routes selected applications through your VLESS/Reality V
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Core](https://img.shields.io/badge/core-sing--box-2E9BDA)
 
+**English** · [Русский](README.ru.md)
+
 <img src="docs/preview.gif" width="360" alt="TunnelDeck preview" />
 
 </div>
@@ -39,9 +41,9 @@ Unlike a normal VPN client that flips your whole machine, TunnelDeck redirects *
 
 <table>
 <tr>
-<td><img src="docs/screen-main.png" width="250" alt="Main — connected" /><br/><b>Подключено + скорость</b></td>
-<td><img src="docs/screen-addapp.png" width="250" alt="Add app / site" /><br/><b>Добавление приложения / сайта</b></td>
-<td><img src="docs/screen-settings.png" width="250" alt="Settings" /><br/><b>Настройки</b></td>
+<td><img src="docs/screen-main.png" width="250" alt="Main — connected" /><br/><b>Connected + live speed</b></td>
+<td><img src="docs/screen-addapp.png" width="250" alt="Add app / site" /><br/><b>Add app / website</b></td>
+<td><img src="docs/screen-settings.png" width="250" alt="Settings" /><br/><b>Settings</b></td>
 </tr>
 </table>
 
@@ -51,7 +53,7 @@ When you add a website, TunnelDeck routes your browsers through a second local p
 
 ## Install
 
-1. Download **`TunnelDeck-Setup-1.1.0.exe`** from the [latest release](../../releases/latest) and run it.
+1. Download **`TunnelDeck-Setup-1.2.0.exe`** from the [latest release](../../releases/latest) and run it.
    The installer sets up the app, a desktop + Start-menu shortcut, and the required network-filter driver.
 2. Launch TunnelDeck (it opens from the tray icon).
 3. Paste your **subscription key**, pick a server, add the apps/sites you want, and hit **Connect**.
