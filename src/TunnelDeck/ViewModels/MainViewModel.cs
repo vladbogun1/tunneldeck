@@ -1,0 +1,414 @@
+using System.Collections.ObjectModel;
+using System.Windows;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using TunnelDeck.Models;
+using TunnelDeck.Services;
+using TunnelDeck.Views;
+
+namespace TunnelDeck.ViewModels;
+
+public enum Page { Main, AddApp, Settings, Subscription }
+
+public sealed partial class MainViewModel : ObservableObject
+{
+    private readonly StateStore _store = new();
+    private readonly SubscriptionService _subs = new();
+    private readonly CoreBootstrapper _bootstrap = new();
+    private readonly CoreController _core = new();
+    private readonly TrafficStatsService _stats = new();
+
+    private AppState _state = new();
+    private bool _coreReady;
+    private bool _loading;   // suppress persist/apply side-effects while (re)hydrating
+
+    public ObservableCollection<AppEntryViewModel> TunneledApps { get; } = new();
+    public ObservableCollection<ServerConfig> Servers { get; } = new();
+    public string[] LogLevels { get; } = { "trace", "debug", "info", "warn", "error" };
+
+    [ObservableProperty] private Page _currentPage = Page.Main;
+    [ObservableProperty] private AddAppViewModel? _addApp;
+    [ObservableProperty] private string _subscriptionInput = "";
+
+    [ObservableProperty] private ServerConfig? _selectedServer;
+    [ObservableProperty] private ConnectionStatus _status = ConnectionStatus.Disconnected;
+    [ObservableProperty] private string _statusText = "Выключено";
+    [ObservableProperty] private string _statusDetail = "";
+    [ObservableProperty] private bool _isBusy;
+    [ObservableProperty] private string _coreVersion = $"sing-box {CoreBootstrapper.Version}";
+
+    // Settings proxies (apply immediately, Windows 11 style)
+    [ObservableProperty] private bool _startWithWindows;
+    [ObservableProperty] private bool _autoConnectOnLaunch;
+    [ObservableProperty] private bool _killSwitch = true;
+    [ObservableProperty] private bool _proxyDns = true;
+    [ObservableProperty] private string _logLevel = "warn";
+
+    public bool IsConnected => Status is ConnectionStatus.Connected;
+    public bool HasSubscription => Servers.Count > 0;
+    public bool HasApps => TunneledApps.Count > 0;
+
+    public bool IsActive => Status is ConnectionStatus.Connected
+        or ConnectionStatus.Connecting or ConnectionStatus.Reconnecting;
+
+    public string ConnectLabel => IsActive ? "Отключить" : "Подключить";
+
+    public System.Windows.Media.Brush StatusBrush => new System.Windows.Media.SolidColorBrush(
+        Status switch
+        {
+            ConnectionStatus.Connected => System.Windows.Media.Color.FromRgb(0x0F, 0x7B, 0x0F),
+            ConnectionStatus.Connecting => System.Windows.Media.Color.FromRgb(0x9D, 0x5D, 0x00),
+            ConnectionStatus.Reconnecting => System.Windows.Media.Color.FromRgb(0x9D, 0x5D, 0x00),
+            ConnectionStatus.Error => System.Windows.Media.Color.FromRgb(0xC4, 0x2B, 0x1C),
+            _ => System.Windows.Media.Color.FromRgb(0x8A, 0x8A, 0x8A)
+        });
+
+    public MainViewModel()
+    {
+        _core.StatusChanged += (_, e) => OnUi(() =>
+        {
+            Status = e.Status;
+            StatusText = e.Status switch
+            {
+                ConnectionStatus.Connected => "Подключено",
+                ConnectionStatus.Connecting => "Подключение…",
+                ConnectionStatus.Reconnecting => "Переподключение…",
+                ConnectionStatus.Error => "Ошибка",
+                _ => "Выключено"
+            };
+            StatusDetail = e.Message ?? "";
+            OnPropertyChanged(nameof(IsConnected));
+            OnPropertyChanged(nameof(IsActive));
+            OnPropertyChanged(nameof(ConnectLabel));
+            OnPropertyChanged(nameof(StatusBrush));
+            ConnectionChanged?.Invoke(this, e.Status);
+
+            if (e.Status == ConnectionStatus.Connected) StartStats();
+            else StopStats();
+        });
+
+        TunneledApps.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasApps));
+
+        _stats.Updated += (_, speeds) => OnUi(() =>
+        {
+            foreach (var app in TunneledApps)
+            {
+                if (speeds.TryGetValue(app.ProcessName, out var s)) app.SetSpeed(s.UploadBps, s.DownloadBps);
+                else app.SetSpeed(0, 0);
+            }
+        });
+    }
+
+    private void StartStats()
+    {
+        foreach (var app in TunneledApps) app.ShowSpeed = true;
+        _stats.Start();
+    }
+
+    private void StopStats()
+    {
+        _stats.Stop();
+        foreach (var app in TunneledApps) { app.ShowSpeed = false; app.SetSpeed(0, 0); }
+    }
+
+    public event EventHandler<ConnectionStatus>? ConnectionChanged;
+
+    // ---- Lifecycle -------------------------------------------------------
+
+    public async Task InitializeAsync()
+    {
+        _state = _store.Load();
+        RebuildFromState();
+
+        try
+        {
+            IsBusy = true;
+            StatusDetail = "Подготовка ядра…";
+            var progress = new Progress<string>(msg => OnUi(() => StatusDetail = msg));
+            await _bootstrap.EnsureAsync(progress);
+            _coreReady = true;
+            StatusDetail = "";
+        }
+        catch (Exception ex)
+        {
+            StatusDetail = "Не удалось загрузить ядро: " + ex.Message;
+        }
+        finally { IsBusy = false; }
+
+        if (_coreReady && _state.Settings.AutoConnectOnLaunch && HasSubscription)
+            await ConnectAsync();
+    }
+
+    private void RebuildFromState()
+    {
+        _loading = true;
+
+        Servers.Clear();
+        foreach (var s in _state.Servers)
+        {
+            s.Name = TextUtil.StripEmoji(s.Name);   // clean already-persisted names
+            Servers.Add(s);
+        }
+        SelectedServer = _state.SelectedServer;
+
+        TunneledApps.Clear();
+        foreach (var app in _state.TunneledApps)
+            TunneledApps.Add(Wrap(app));
+
+        StartWithWindows = _state.Settings.StartWithWindows;
+        AutoConnectOnLaunch = _state.Settings.AutoConnectOnLaunch;
+        KillSwitch = _state.Settings.KillSwitch;
+        ProxyDns = _state.Settings.ProxyDnsForTunneledApps;
+        LogLevel = _state.Settings.LogLevel;
+
+        SubscriptionInput = _state.SubscriptionUrl;
+
+        OnPropertyChanged(nameof(HasSubscription));
+        OnPropertyChanged(nameof(HasApps));
+
+        _loading = false;
+    }
+
+    private AppEntryViewModel Wrap(TunneledApp app)
+    {
+        var vm = new AppEntryViewModel(app);
+        vm.EnabledChanged += (_, _) => OnUi(() => { Persist(); SafeApply(); });
+        return vm;
+    }
+
+    // ---- Navigation ------------------------------------------------------
+
+    [RelayCommand] private void GoBack() => CurrentPage = Page.Main;
+
+    [RelayCommand]
+    private void GoAddApp()
+    {
+        AddApp = new AddAppViewModel();
+        CurrentPage = Page.AddApp;
+    }
+
+    [RelayCommand] private void GoSettings() => CurrentPage = Page.Settings;
+
+    [RelayCommand]
+    private void GoSubscription()
+    {
+        SubscriptionInput = _state.SubscriptionUrl;
+        CurrentPage = Page.Subscription;
+    }
+
+    // ---- Connection ------------------------------------------------------
+
+    [RelayCommand]
+    private async Task ToggleConnectionAsync()
+    {
+        if (IsActive) await DisconnectAsync();
+        else await ConnectAsync();
+    }
+
+    public async Task ConnectAsync()
+    {
+        if (!_coreReady) { StatusDetail = "Ядро ещё не готово."; return; }
+        var server = SelectedServer;
+        if (server is null) { StatusDetail = "Сначала добавьте ключ подписки."; return; }
+
+        try
+        {
+            IsBusy = true;
+            await _core.StartAsync(server, _state.TunneledApps, _state.Settings);
+        }
+        catch (Exception ex)
+        {
+            Status = ConnectionStatus.Error;
+            StatusText = "Ошибка";
+            StatusDetail = ex.Message;
+        }
+        finally { IsBusy = false; }
+    }
+
+    public async Task DisconnectAsync()
+    {
+        IsBusy = true;
+        try { await _core.StopAsync(); }
+        catch (Exception ex) { StatusDetail = ex.Message; }
+        finally { IsBusy = false; }
+    }
+
+    private async Task ApplyIfRunningAsync()
+    {
+        if (SelectedServer is null) return;
+        await _core.ApplyAsync(SelectedServer, _state.TunneledApps, _state.Settings);
+    }
+
+    /// <summary>Fire-and-forget apply that never lets an exception escape (crash-safe).</summary>
+    private async void SafeApply()
+    {
+        try { await ApplyIfRunningAsync(); }
+        catch (Exception ex) { OnUi(() => StatusDetail = "Ошибка применения: " + ex.Message); }
+    }
+
+    // ---- Apps ------------------------------------------------------------
+
+    [RelayCommand]
+    private void AddSelectedRunning()
+    {
+        var sel = AddApp?.Selected;
+        if (sel is null) return;
+        AddTunneled(AddAppViewModel.FromRunning(sel));
+        GoBack();
+    }
+
+    [RelayCommand]
+    private void BrowseAndAdd()
+    {
+        var path = FileDialogService.PickExecutable();
+        if (string.IsNullOrWhiteSpace(path)) return;
+        AddTunneled(AddAppViewModel.FromExePath(path));
+        GoBack();
+    }
+
+    private void AddTunneled(TunneledApp app)
+    {
+        if (_state.TunneledApps.Any(a =>
+                string.Equals(a.ProcessName, app.ProcessName, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        _state.TunneledApps.Add(app);
+        var vm = Wrap(app);
+        vm.ShowSpeed = Status == ConnectionStatus.Connected;
+        TunneledApps.Add(vm);
+        Persist();
+        SafeApply();
+    }
+
+    [RelayCommand]
+    private void RemoveApp(AppEntryViewModel? entry)
+    {
+        if (entry is null) return;
+        _state.TunneledApps.Remove(entry.Model);
+        TunneledApps.Remove(entry);
+        Persist();
+        SafeApply();
+    }
+
+    // ---- Subscription ----------------------------------------------------
+
+    [RelayCommand]
+    private async Task LoadSubscriptionAsync()
+    {
+        var url = (SubscriptionInput ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(url)) { StatusDetail = "Вставьте ссылку подписки."; return; }
+
+        try
+        {
+            IsBusy = true;
+            StatusDetail = "Загрузка подписки…";
+            var servers = await _subs.FetchAsync(url, EnsureHwid());
+            if (servers.Count == 0) { StatusDetail = "Серверы не найдены."; return; }
+
+            _state.SubscriptionUrl = url;
+            _state.Servers = servers.ToList();
+            if (_state.SelectedServerId is null || _state.Servers.All(s => s.Id != _state.SelectedServerId))
+                _state.SelectedServerId = _state.Servers[0].Id;
+
+            RebuildFromState();
+            Persist();
+            StatusDetail = $"Загружено серверов: {servers.Count}.";
+            CurrentPage = Page.Main;
+        }
+        catch (Exception ex)
+        {
+            StatusDetail = "Ошибка подписки: " + ex.Message;
+        }
+        finally { IsBusy = false; }
+    }
+
+    // ---- Server selection ------------------------------------------------
+
+    partial void OnSelectedServerChanged(ServerConfig? value)
+    {
+        if (_loading || value is null) return;
+        _state.SelectedServerId = value.Id;
+        Persist();
+        SafeApply();
+    }
+
+    // ---- Settings (apply live) ------------------------------------------
+
+    partial void OnStartWithWindowsChanged(bool value)
+    {
+        if (_loading) return;
+        _state.Settings.StartWithWindows = value;
+        try { AutostartService.SetEnabled(value); } catch { }
+        Persist();
+    }
+
+    partial void OnAutoConnectOnLaunchChanged(bool value)
+    {
+        if (_loading) return;
+        _state.Settings.AutoConnectOnLaunch = value;
+        Persist();
+    }
+
+    partial void OnKillSwitchChanged(bool value)
+    {
+        if (_loading) return;
+        _state.Settings.KillSwitch = value;
+        Persist();
+        SafeApply();
+    }
+
+    partial void OnProxyDnsChanged(bool value)
+    {
+        if (_loading) return;
+        _state.Settings.ProxyDnsForTunneledApps = value;
+        Persist();
+        SafeApply();
+    }
+
+    partial void OnLogLevelChanged(string value)
+    {
+        if (_loading || string.IsNullOrWhiteSpace(value)) return;
+        _state.Settings.LogLevel = value;
+        Persist();
+        SafeApply();
+    }
+
+    // ---- Helpers ---------------------------------------------------------
+
+    private string EnsureHwid()
+    {
+        if (string.IsNullOrWhiteSpace(_state.Hwid))
+        {
+            _state.Hwid = "td-" + Guid.NewGuid().ToString("N");
+            Persist();
+        }
+        return _state.Hwid;
+    }
+
+    private void Persist()
+    {
+        try { _store.Save(_state); } catch { }
+    }
+
+    public async Task ShutdownAsync()
+    {
+        _stats.Stop();
+        try { await _core.StopAsync(); } catch { }
+    }
+
+    private static void OnUi(Action action)
+    {
+        try
+        {
+            var app = Application.Current;
+            if (app is null) { action(); return; }
+            if (app.Dispatcher.HasShutdownStarted) return;
+            if (app.Dispatcher.CheckAccess()) action();
+            else app.Dispatcher.BeginInvoke(action);
+        }
+        catch (Exception ex)
+        {
+            try { System.IO.File.AppendAllText(Paths.LogFile, $"[OnUi] {DateTime.Now:HH:mm:ss} {ex}\n"); } catch { }
+        }
+    }
+}

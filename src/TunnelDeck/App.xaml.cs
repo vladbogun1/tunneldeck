@@ -1,0 +1,168 @@
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Threading;
+using H.NotifyIcon;
+using TunnelDeck.Models;
+using TunnelDeck.Services;
+using TunnelDeck.ViewModels;
+using TunnelDeck.Views;
+
+namespace TunnelDeck;
+
+public partial class App : Application
+{
+    private Mutex? _singleInstance;
+    private TaskbarIcon? _tray;
+    private MainViewModel? _vm;
+    private FlyoutWindow? _flyout;
+    private volatile bool _shuttingDown;
+
+    protected override async void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        // Never let an unhandled exception hard-crash the tray app.
+        DispatcherUnhandledException += OnDispatcherException;
+        AppDomain.CurrentDomain.UnhandledException += (_, ev) => Log("AppDomain", ev.ExceptionObject as Exception);
+        TaskScheduler.UnobservedTaskException += (_, ev) => { Log("Task", ev.Exception); ev.SetObserved(); };
+
+        _singleInstance = new Mutex(true, "TunnelDeck.SingleInstance", out bool isNew);
+        if (!isNew) { Shutdown(); return; }
+
+        Paths.EnsureDirs();
+
+        _vm = new MainViewModel();
+        _vm.ConnectionChanged += (_, status) => UpdateTray(status);
+
+        _flyout = new FlyoutWindow { DataContext = _vm };
+
+        SetupTray();
+
+        await _vm.InitializeAsync();
+
+        if (!_vm.HasSubscription || Environment.GetEnvironmentVariable("TUNNELDECK_NOHIDE") == "1")
+            ShowFlyout();
+
+        // Test hook: jump to a page for screenshot verification.
+        switch (Environment.GetEnvironmentVariable("TUNNELDECK_PAGE"))
+        {
+            case "settings": _vm.GoSettingsCommand.Execute(null); break;
+            case "addapp": _vm.GoAddAppCommand.Execute(null); break;
+            case "sub": _vm.GoSubscriptionCommand.Execute(null); break;
+        }
+
+        if (Environment.GetEnvironmentVariable("TUNNELDECK_FAKESPEED") == "1")
+            foreach (var a in _vm.TunneledApps) { a.ShowSpeed = true; a.SetSpeed(120 * 1024, 1536 * 1024); }
+    }
+
+    private void SetupTray()
+    {
+        _tray = new TaskbarIcon
+        {
+            Icon = TrayIconFactory.For(ConnectionStatus.Disconnected),
+            ToolTipText = "TunnelDeck — выключено",
+            ContextMenu = BuildContextMenu()
+        };
+        _tray.TrayLeftMouseUp += (_, _) => ToggleFlyout();
+        _tray.ForceCreate();
+    }
+
+    private System.Windows.Controls.ContextMenu BuildContextMenu()
+    {
+        var menu = new System.Windows.Controls.ContextMenu();
+
+        var open = new System.Windows.Controls.MenuItem { Header = "Открыть" };
+        open.Click += (_, _) => ShowFlyout();
+
+        var toggle = new System.Windows.Controls.MenuItem { Header = "Подключить / Отключить" };
+        toggle.Click += async (_, _) => { try { if (_vm is not null) await _vm.ToggleConnectionCommand.ExecuteAsync(null); } catch (Exception ex) { Log("Toggle", ex); } };
+
+        var settings = new System.Windows.Controls.MenuItem { Header = "Настройки" };
+        settings.Click += (_, _) => { ShowFlyout(); _vm?.GoSettingsCommand.Execute(null); };
+
+        var quit = new System.Windows.Controls.MenuItem { Header = "Выход" };
+        quit.Click += async (_, _) => await QuitAsync();
+
+        menu.Items.Add(open);
+        menu.Items.Add(toggle);
+        menu.Items.Add(new System.Windows.Controls.Separator());
+        menu.Items.Add(settings);
+        menu.Items.Add(quit);
+        return menu;
+    }
+
+    private void UpdateTray(ConnectionStatus status)
+    {
+        if (_tray is null || _shuttingDown) return;
+        try
+        {
+        _tray.Icon = TrayIconFactory.For(status);
+        _tray.ToolTipText = status switch
+        {
+            ConnectionStatus.Connected => "TunnelDeck — подключено",
+            ConnectionStatus.Connecting => "TunnelDeck — подключение…",
+            ConnectionStatus.Reconnecting => "TunnelDeck — переподключение…",
+            ConnectionStatus.Error => "TunnelDeck — ошибка",
+            _ => "TunnelDeck — выключено"
+        };
+        }
+        catch (ObjectDisposedException) { /* tray gone during shutdown */ }
+        catch (Exception ex) { Log("UpdateTray", ex); }
+    }
+
+    private void ToggleFlyout()
+    {
+        if (_flyout is { IsVisible: true }) _flyout.Hide();
+        else ShowFlyout();
+    }
+
+    private void ShowFlyout()
+    {
+        if (_flyout is null) return;
+        _flyout.PositionNearTray();
+        _flyout.Show();
+        _flyout.Activate();
+        _flyout.Topmost = true;
+        _flyout.Focus();
+    }
+
+    private void OnDispatcherException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        Log("Dispatcher", e.Exception);
+        MessageBox.Show(
+            "Произошла ошибка:\n\n" + e.Exception.Message +
+            "\n\nПодробности записаны в журнал. Приложение продолжит работу.",
+            "TunnelDeck", MessageBoxButton.OK, MessageBoxImage.Warning);
+        e.Handled = true;
+    }
+
+    private static void Log(string source, Exception? ex)
+    {
+        if (ex is null) return;
+        try
+        {
+            File.AppendAllText(Paths.LogFile,
+                $"[{source}] {DateTime.Now:HH:mm:ss} {ex}\n{new string('-', 60)}\n");
+        }
+        catch { }
+    }
+
+    private async Task QuitAsync()
+    {
+        _shuttingDown = true;
+        if (_vm is not null) await _vm.ShutdownAsync();
+        _tray?.Dispose();
+        Shutdown();
+    }
+
+    protected override async void OnExit(ExitEventArgs e)
+    {
+        _shuttingDown = true;
+        if (_vm is not null) await _vm.ShutdownAsync();
+        _tray?.Dispose();
+        try { _singleInstance?.ReleaseMutex(); } catch { }
+        base.OnExit(e);
+    }
+}

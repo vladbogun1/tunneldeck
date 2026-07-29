@@ -1,0 +1,16 @@
+## .NET build output
+[Bb]in/
+[Oo]bj/
+publish/
+dist/
+*.user
+.vs/
+*.suo
+
+## Local runtime data (downloaded core, logs, generated config)
+core/
+*.log
+
+## OS
+Thumbs.db
+Desktop.ini

@@ -1,0 +1,384 @@
+<Window x:Class="TunnelDeck.Views.FlyoutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:v="clr-namespace:TunnelDeck.Views"
+        WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True"
+        Background="Transparent" ShowInTaskbar="False" Topmost="True"
+        Width="404" Height="644" TextOptions.TextFormattingMode="Ideal"
+        FontFamily="Segoe UI Variable Text, Segoe UI">
+
+    <Window.Resources>
+        <v:BoolToVisibilityConverter x:Key="BoolVis"/>
+        <v:BoolToVisibilityConverter x:Key="BoolVisInv" Invert="True"/>
+        <v:EnumMatchToVisibilityConverter x:Key="EnumVis"/>
+        <v:EmojiStripConverter x:Key="StripEmoji"/>
+    </Window.Resources>
+
+    <Border Background="{StaticResource WindowBg}" CornerRadius="10" BorderBrush="{StaticResource Stroke}"
+            BorderThickness="1" Margin="12">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="28" ShadowDepth="3" Opacity="0.22" Color="Black"/>
+        </Border.Effect>
+
+        <Grid>
+            <!-- ============================ MAIN ============================ -->
+            <Grid Margin="18" Visibility="{Binding CurrentPage, Converter={StaticResource EnumVis}, ConverterParameter=Main}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Title -->
+                <Grid Grid.Row="0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse Width="11" Height="11" Fill="{Binding StatusBrush}"/>
+                        <TextBlock Text="TunnelDeck" FontSize="17" FontWeight="Bold" Margin="9,0,0,0"/>
+                    </StackPanel>
+                    <Button Style="{StaticResource IconButton}" HorizontalAlignment="Right" Content="⚙"
+                            FontSize="16" ToolTip="Настройки" Command="{Binding GoSettingsCommand}"/>
+                </Grid>
+
+                <!-- Connect card -->
+                <Border Grid.Row="1" Background="{StaticResource Card}" CornerRadius="8" Padding="16"
+                        Margin="0,14,0,0" BorderBrush="{StaticResource Stroke}" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="{Binding StatusText}" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding StatusDetail}" Foreground="{StaticResource TextSecondary}"
+                                   FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"
+                                   Visibility="{Binding StatusDetail, Converter={StaticResource BoolVis}}"/>
+
+                        <ComboBox ItemsSource="{Binding Servers}" SelectedItem="{Binding SelectedServer}"
+                                  Margin="0,14,0,0"
+                                  Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name, Converter={StaticResource StripEmoji}}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <Button Content="{Binding ConnectLabel}" Style="{StaticResource PrimaryButton}"
+                                Command="{Binding ToggleConnectionCommand}" Margin="0,10,0,0"
+                                IsEnabled="{Binding HasSubscription}"
+                                Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Apps section header -->
+                <TextBlock Grid.Row="2" Text="ПРИЛОЖЕНИЯ ЧЕРЕЗ VPN" FontSize="11" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextTertiary}" Margin="2,20,0,8"
+                           Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
+
+                <!-- Apps list -->
+                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto"
+                              Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}">
+                    <StackPanel>
+                        <ItemsControl ItemsSource="{Binding TunneledApps}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource Card}" CornerRadius="8" Padding="12,10"
+                                            Margin="0,0,0,8" BorderBrush="{StaticResource Stroke}" BorderThickness="1">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Image Grid.Column="0" Source="{Binding Icon}" Width="28" Height="28"
+                                                   VerticalAlignment="Center"/>
+                                            <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding ProcessName}" FontSize="11"
+                                                           Foreground="{StaticResource TextSecondary}"
+                                                           Visibility="{Binding ShowSpeed, Converter={StaticResource BoolVisInv}}"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
+                                                            Visibility="{Binding ShowSpeed, Converter={StaticResource BoolVis}}">
+                                                    <TextBlock Text="↓" FontSize="11" FontWeight="Bold"
+                                                               Foreground="{StaticResource Green}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding DownText}" FontSize="11" Margin="3,0,10,0"
+                                                               Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="↑" FontSize="11" FontWeight="Bold"
+                                                               Foreground="{StaticResource Accent}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding UpText}" FontSize="11" Margin="3,0,0,0"
+                                                               Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <ToggleButton Grid.Column="2" Style="{StaticResource Switch}"
+                                                          IsChecked="{Binding Enabled}" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="3" Style="{StaticResource IconButton}" Content="✕"
+                                                    Width="30" Height="30" FontSize="12" Margin="4,0,0,0"
+                                                    ToolTip="Убрать"
+                                                    Command="{Binding DataContext.RemoveAppCommand,
+                                                              RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Border Background="{StaticResource CardAlt}" CornerRadius="8" Padding="16" Margin="0,2,0,0"
+                                BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                                Visibility="{Binding HasApps, Converter={StaticResource BoolVisInv}}">
+                            <StackPanel>
+                                <TextBlock Text="Пока нет приложений" FontSize="13" FontWeight="SemiBold"
+                                           HorizontalAlignment="Center" Foreground="{StaticResource TextSecondary}"/>
+                                <TextBlock Text="Добавьте приложение, чтобы направить его трафик через VPN."
+                                           FontSize="11.5" Foreground="{StaticResource TextTertiary}"
+                                           TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Onboarding (no subscription) -->
+                <Border Grid.Row="3" Background="{StaticResource Card}" CornerRadius="8" Padding="20"
+                        Margin="0,14,0,0" BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+                        VerticalAlignment="Top"
+                        Visibility="{Binding HasSubscription, Converter={StaticResource BoolVisInv}}">
+                    <StackPanel>
+                        <TextBlock Text="Добавьте ключ VPN" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Вставьте ссылку-подписку (ключ от вашего VPN-бота). TunnelDeck сам загрузит список серверов."
+                                   Foreground="{StaticResource TextSecondary}" FontSize="12.5" TextWrapping="Wrap"
+                                   Margin="0,6,0,14"/>
+                        <Button Content="Вставить ключ подписки" Style="{StaticResource PrimaryButton}"
+                                Command="{Binding GoSubscriptionCommand}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Add button -->
+                <Button Grid.Row="4" Content="＋  Добавить приложение" Style="{StaticResource SecondaryButton}"
+                        Command="{Binding GoAddAppCommand}" Margin="0,10,0,0"
+                        Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
+
+                <!-- Footer -->
+                <Grid Grid.Row="5" Margin="0,12,0,0">
+                    <Button Style="{StaticResource LinkButton}" HorizontalAlignment="Left" Content="↻ Обновить ключ"
+                            Command="{Binding GoSubscriptionCommand}"
+                            Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
+                    <TextBlock Text="{Binding CoreVersion}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                               FontSize="10.5" Foreground="{StaticResource TextTertiary}"/>
+                </Grid>
+            </Grid>
+
+            <!-- ============================ ADD APP ============================ -->
+            <Grid Margin="18" Visibility="{Binding CurrentPage, Converter={StaticResource EnumVis}, ConverterParameter=AddApp}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Orientation="Horizontal">
+                    <Button Style="{StaticResource IconButton}" Content="←" FontSize="17"
+                            Command="{Binding GoBackCommand}"/>
+                    <TextBlock Text="Добавить приложение" FontSize="16" FontWeight="Bold"
+                               VerticalAlignment="Center" Margin="6,0,0,0"/>
+                </StackPanel>
+
+                <Grid Grid.Row="1" Margin="0,14,0,0">
+                    <TextBox x:Name="SearchBox" Style="{StaticResource Input}"
+                             Text="{Binding AddApp.Search, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Text="Поиск приложения…" IsHitTestVisible="False" VerticalAlignment="Center"
+                               Margin="13,0,0,0" FontSize="13" Foreground="{StaticResource TextTertiary}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+
+                <ListBox Grid.Row="2" Margin="0,10,0,0" x:Name="RunningList"
+                         ItemsSource="{Binding AddApp.Apps}" SelectedItem="{Binding AddApp.Selected, Mode=TwoWay}"
+                         Background="Transparent" BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         MouseDoubleClick="RunningList_DoubleClick">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Margin" Value="0,0,0,6"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="b" Background="{StaticResource Card}" CornerRadius="8"
+                                                Padding="11" BorderThickness="1" BorderBrush="{StaticResource Stroke}">
+                                            <ContentPresenter/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="b" Property="Background" Value="{StaticResource CardHover}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                                                <Setter TargetName="b" Property="BorderThickness" Value="1.5"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Image Grid.Column="0" Source="{Binding Icon}" Width="28" Height="28"/>
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="13"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding ProcessName}" Foreground="{StaticResource TextSecondary}"
+                                               FontSize="11"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Grid.Row="3" Margin="0,14,0,0">
+                    <Button Content="Выбрать .exe вручную…" Style="{StaticResource SecondaryButton}"
+                            Command="{Binding BrowseAndAddCommand}"/>
+                    <Button Content="Добавить выбранное" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"
+                            Command="{Binding AddSelectedRunningCommand}"
+                            IsEnabled="{Binding AddApp.Selected, Converter={StaticResource BoolVis}}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- ============================ SETTINGS ============================ -->
+            <Grid Margin="18" Visibility="{Binding CurrentPage, Converter={StaticResource EnumVis}, ConverterParameter=Settings}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Orientation="Horizontal">
+                    <Button Style="{StaticResource IconButton}" Content="←" FontSize="17"
+                            Command="{Binding GoBackCommand}"/>
+                    <TextBlock Text="Настройки" FontSize="16" FontWeight="Bold"
+                               VerticalAlignment="Center" Margin="6,0,0,0"/>
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="1" Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
+                    <Border Background="{StaticResource Card}" CornerRadius="8" BorderBrush="{StaticResource Stroke}"
+                            BorderThickness="1">
+                        <StackPanel>
+                            <!-- row -->
+                            <Grid Margin="14,13">
+                                <StackPanel Margin="0,0,54,0">
+                                    <TextBlock Text="Запускать с Windows" FontSize="13" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Открывать TunnelDeck при входе в систему." FontSize="11.5"
+                                               Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
+                                              VerticalAlignment="Center" IsChecked="{Binding StartWithWindows}"/>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource Stroke}"/>
+                            <Grid Margin="14,13">
+                                <StackPanel Margin="0,0,54,0">
+                                    <TextBlock Text="Автоподключение при старте" FontSize="13" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Подключать VPN сразу после запуска." FontSize="11.5"
+                                               Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
+                                              VerticalAlignment="Center" IsChecked="{Binding AutoConnectOnLaunch}"/>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource Stroke}"/>
+                            <Grid Margin="14,13">
+                                <StackPanel Margin="0,0,54,0">
+                                    <TextBlock Text="Kill-switch" FontSize="13" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Перезапускать ядро при сбое, чтобы трафик выбранных приложений не утёк." FontSize="11.5"
+                                               Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
+                                              VerticalAlignment="Center" IsChecked="{Binding KillSwitch}"/>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource Stroke}"/>
+                            <Grid Margin="14,13">
+                                <StackPanel Margin="0,0,54,0">
+                                    <TextBlock Text="DNS через VPN" FontSize="13" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Резолвить DNS выбранных приложений через прокси (защита от утечек)." FontSize="11.5"
+                                               Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <ToggleButton Style="{StaticResource Switch}" HorizontalAlignment="Right"
+                                              VerticalAlignment="Center" IsChecked="{Binding ProxyDns}"/>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource Stroke}"/>
+                            <Grid Margin="14,13">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Уровень логов" FontSize="13" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Детализация логов ядра sing-box." FontSize="11.5"
+                                               Foreground="{StaticResource TextSecondary}"/>
+                                </StackPanel>
+                                <ComboBox Width="130" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                          ItemsSource="{Binding LogLevels}" SelectedItem="{Binding LogLevel}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- ============================ SUBSCRIPTION ============================ -->
+            <Grid Margin="18" Visibility="{Binding CurrentPage, Converter={StaticResource EnumVis}, ConverterParameter=Subscription}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Orientation="Horizontal">
+                    <Button Style="{StaticResource IconButton}" Content="←" FontSize="17"
+                            Command="{Binding GoBackCommand}"/>
+                    <TextBlock Text="Ключ подписки" FontSize="16" FontWeight="Bold"
+                               VerticalAlignment="Center" Margin="6,0,0,0"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="1" Margin="2,14,0,0" TextWrapping="Wrap" FontSize="12.5"
+                           Foreground="{StaticResource TextSecondary}"
+                           Text="Вставьте ссылку-подписку от вашего VPN (та, что прислал бот), или ключ vless://."/>
+
+                <Grid Grid.Row="2" Margin="0,12,0,0">
+                    <TextBox x:Name="SubBox" Style="{StaticResource Input}"
+                             Text="{Binding SubscriptionInput, UpdateSourceTrigger=PropertyChanged}"
+                             TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top"
+                             VerticalScrollBarVisibility="Auto"/>
+                    <TextBlock Text="https://…  или  vless://…" IsHitTestVisible="False" VerticalAlignment="Top"
+                               Margin="13,10,0,0" FontSize="13" Foreground="{StaticResource TextTertiary}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=SubBox}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+
+                <TextBlock Grid.Row="3" Text="{Binding StatusDetail}" Margin="2,10,0,0" TextWrapping="Wrap"
+                           FontSize="11.5" Foreground="{StaticResource TextSecondary}"/>
+
+                <Button Grid.Row="4" Content="Загрузить серверы" Style="{StaticResource PrimaryButton}"
+                        Margin="0,12,0,0" Command="{Binding LoadSubscriptionCommand}"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
