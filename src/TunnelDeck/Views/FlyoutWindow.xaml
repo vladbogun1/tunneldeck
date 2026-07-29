@@ -275,10 +275,10 @@
                 <!-- Footer -->
                 <Grid Grid.Row="5" Margin="0,12,0,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                        <Button Style="{StaticResource LinkButton}" Content="{DynamicResource S.RefreshKey}"
+                        <Button Style="{StaticResource ChipButton}" Content="{DynamicResource S.RefreshKey}"
                                 Command="{Binding GoSubscriptionCommand}"
                                 Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
-                        <Button x:Name="CheckBtn" Style="{StaticResource LinkButton}" Content="{DynamicResource S.Check}" Margin="6,0,0,0"
+                        <Button x:Name="CheckBtn" Style="{StaticResource ChipButton}" Content="{DynamicResource S.Check}" Margin="7,0,0,0"
                                 Command="{Binding CheckCommand}"
                                 Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}}"/>
 
@@ -321,7 +321,7 @@
                             </Border>
                         </Popup>
 
-                        <Button Style="{StaticResource LinkButton}" Content="{DynamicResource S.Connections}" Margin="6,0,0,0"
+                        <Button Style="{StaticResource ChipButton}" Content="{DynamicResource S.Connections}" Margin="7,0,0,0"
                                 Command="{Binding GoConnectionsCommand}"
                                 Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}}"/>
                     </StackPanel>
