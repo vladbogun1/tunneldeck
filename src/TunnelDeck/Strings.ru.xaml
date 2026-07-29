@@ -42,6 +42,13 @@
     <s:String x:Key="S.WhatsNew">Что нового</s:String>
     <s:String x:Key="S.ExitLabel">Выход</s:String>
     <s:String x:Key="S.Session">Сессия</s:String>
+    <s:String x:Key="S.Connections">Соединения</s:String>
+    <s:String x:Key="S.ConnTitle">Активные соединения</s:String>
+    <s:String x:Key="S.ConnEmpty">Пока нет активных соединений через VPN.</s:String>
+    <s:String x:Key="S.LeakWarn">Возможна утечка трафика</s:String>
+    <s:String x:Key="S.LeakWarnSub">Выход через VPN совпадает с вашим реальным IP — трафик может идти напрямую.</s:String>
+    <s:String x:Key="S.LeakDown">VPN-туннель недоступен</s:String>
+    <s:String x:Key="S.LeakDownSub">Прокси не отвечает. Трафик выбранных приложений может идти напрямую.</s:String>
     <s:String x:Key="S.LangAuto">Системный</s:String>
 
     <s:String x:Key="S.St.Connected">Подключено</s:String>

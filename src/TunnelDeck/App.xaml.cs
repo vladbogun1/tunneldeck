@@ -58,6 +58,7 @@ public partial class App : Application
             case "settings": _vm.GoSettingsCommand.Execute(null); break;
             case "addapp": _vm.GoAddAppCommand.Execute(null); break;
             case "sub": _vm.GoSubscriptionCommand.Execute(null); break;
+            case "connections": _vm.GoConnectionsCommand.Execute(null); break;
         }
 
         var demo = Environment.GetEnvironmentVariable("TUNNELDECK_DEMO");

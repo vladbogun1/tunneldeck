@@ -87,6 +87,48 @@ public sealed class TrafficStatsService
         return (upBps, downBps);
     }
 
+    /// <summary>One active connection (aggregated per destination host).</summary>
+    public sealed record ConnectionInfo(string Host, string Detail, long Up, long Down);
+
+    /// <summary>Snapshot of active connections from the Clash API, busiest first.</summary>
+    public async Task<IReadOnlyList<ConnectionInfo>> FetchConnectionsAsync(CancellationToken ct = default)
+    {
+        var url = SingBoxConfigBuilder.ClashApiBaseUrl + "/connections";
+        var json = await _http.GetStringAsync(url, ct);
+        var raw = new List<ConnectionInfo>();
+
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.TryGetProperty("connections", out var conns) && conns.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var c in conns.EnumerateArray())
+            {
+                string host = "", network = "", port = "";
+                if (c.TryGetProperty("metadata", out var m))
+                {
+                    host = Str(m, "host");
+                    if (host.Length == 0) host = Str(m, "destinationIP");
+                    network = Str(m, "network");
+                    port = Str(m, "destinationPort");
+                }
+                if (host.Length == 0) continue;
+                long up = 0, down = 0;
+                if (c.TryGetProperty("upload", out var u)) u.TryGetInt64(out up);
+                if (c.TryGetProperty("download", out var d)) d.TryGetInt64(out down);
+                var detail = string.Join(" · ", new[] { network, port }.Where(s => s.Length > 0));
+                raw.Add(new ConnectionInfo(host, detail, up, down));
+            }
+        }
+
+        return raw
+            .GroupBy(x => x.Host)
+            .Select(g => new ConnectionInfo(g.Key, g.First().Detail, g.Sum(x => x.Up), g.Sum(x => x.Down)))
+            .OrderByDescending(x => x.Up + x.Down)
+            .ToList();
+    }
+
+    private static string Str(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+
     public static string Format(long bytesPerSec)
     {
         if (bytesPerSec < 1024) return $"{bytesPerSec} Б/с";

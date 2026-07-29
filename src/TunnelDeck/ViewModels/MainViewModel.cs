@@ -11,7 +11,7 @@ using TunnelDeck.Views;
 
 namespace TunnelDeck.ViewModels;
 
-public enum Page { Main, AddApp, Settings, Subscription }
+public enum Page { Main, AddApp, Settings, Subscription, Connections }
 
 public sealed partial class MainViewModel : ObservableObject
 {
@@ -20,6 +20,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly CoreBootstrapper _bootstrap = new();
     private readonly CoreController _core = new();
     private readonly TrafficStatsService _stats = new();
+    private readonly LeakMonitor _leak = new();
     private readonly UpdateService _update = new();
     private UpdateInfo? _pendingUpdate;
 
@@ -30,7 +31,15 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<AppEntryViewModel> TunneledApps { get; } = new();
     public ObservableCollection<SiteEntryViewModel> TunneledSites { get; } = new();
     public ObservableCollection<ServerItemViewModel> Servers { get; } = new();
+    public ObservableCollection<ConnItemViewModel> ActiveConnections { get; } = new();
+    public bool HasConnections => ActiveConnections.Count > 0;
+    private readonly DispatcherTimer _connTimer;
     public string[] LogLevels { get; } = { "trace", "debug", "info", "warn", "error" };
+
+    // Leak / tunnel-down warning (shown as a red banner while connected)
+    [ObservableProperty] private bool _leakWarning;
+    [ObservableProperty] private string _leakWarningText = "";
+    [ObservableProperty] private string _leakWarningSub = "";
 
     [ObservableProperty] private string _addSiteInput = "";
 
@@ -162,6 +171,22 @@ public sealed partial class MainViewModel : ObservableObject
             SessionDurationText = $"{(int)t.TotalHours:00}:{t.Minutes:00}:{t.Seconds:00}";
         };
 
+        _connTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _connTimer.Tick += (_, _) => RefreshConnections();
+
+        _leak.StatusChanged += (_, s) => OnUi(() =>
+        {
+            switch (s)
+            {
+                case LeakStatus.Leaking:
+                    LeakWarning = true; LeakWarningText = Loc.T("S.LeakWarn"); LeakWarningSub = Loc.T("S.LeakWarnSub"); break;
+                case LeakStatus.TunnelDown:
+                    LeakWarning = true; LeakWarningText = Loc.T("S.LeakDown"); LeakWarningSub = Loc.T("S.LeakDownSub"); break;
+                default:
+                    LeakWarning = false; break;
+            }
+        });
+
         Loc.Changed += (_, _) => OnUi(() =>
         {
             StatusText = StatusWord(Status);
@@ -179,6 +204,9 @@ public sealed partial class MainViewModel : ObservableObject
         SessionDownText = SessionUpText = "0 Б";
         ShowDuration = true;
         _sessionTimer.Start();
+
+        LeakWarning = false;
+        _leak.Start();
     }
 
     private void StopStats()
@@ -189,6 +217,12 @@ public sealed partial class MainViewModel : ObservableObject
 
         _sessionTimer.Stop();
         ShowDuration = false;
+
+        _leak.Stop();
+        LeakWarning = false;
+        _connTimer.Stop();
+        ActiveConnections.Clear();
+        OnPropertyChanged(nameof(HasConnections));
 
         // Reset the check plate when the tunnel drops.
         CheckResultVisible = false;
@@ -332,6 +366,39 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand] private void GoSettings() => CurrentPage = Page.Settings;
+
+    [RelayCommand]
+    private void GoConnections()
+    {
+        CurrentPage = Page.Connections;
+        RefreshConnections();
+    }
+
+    partial void OnCurrentPageChanged(Page value)
+    {
+        if (value == Page.Connections) _connTimer.Start();
+        else _connTimer.Stop();
+    }
+
+    private async void RefreshConnections()
+    {
+        if (!IsConnected)
+        {
+            OnUi(() => { ActiveConnections.Clear(); OnPropertyChanged(nameof(HasConnections)); });
+            return;
+        }
+        try
+        {
+            var list = await _stats.FetchConnectionsAsync();
+            OnUi(() =>
+            {
+                ActiveConnections.Clear();
+                foreach (var c in list.Take(25)) ActiveConnections.Add(new ConnItemViewModel(c));
+                OnPropertyChanged(nameof(HasConnections));
+            });
+        }
+        catch { /* transient */ }
+    }
 
     [RelayCommand]
     private void GoSubscription()
@@ -698,6 +765,22 @@ public sealed partial class MainViewModel : ObservableObject
             CheckResultVisible = true;
             var demoPings = new[] { 38, 120, 260 };
             for (int i = 0; i < Servers.Count; i++) Servers[i].PingMs = demoPings[i % demoPings.Length];
+
+            ActiveConnections.Clear();
+            foreach (var c in new[]
+            {
+                new TrafficStatsService.ConnectionInfo("youtube.com", "tcp · 443", 210_000, 4_200_000),
+                new TrafficStatsService.ConnectionInfo("discord.com", "tcp · 443", 88_000, 640_000),
+                new TrafficStatsService.ConnectionInfo("cloudflare.com", "tcp · 443", 12_000, 96_000),
+            }) ActiveConnections.Add(new ConnItemViewModel(c));
+            OnPropertyChanged(nameof(HasConnections));
+
+            if (Environment.GetEnvironmentVariable("TUNNELDECK_LEAK") == "1")
+            {
+                LeakWarning = true;
+                LeakWarningText = Loc.T("S.LeakWarn");
+                LeakWarningSub = Loc.T("S.LeakWarnSub");
+            }
         }
     }
 
