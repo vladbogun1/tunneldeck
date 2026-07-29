@@ -277,62 +277,19 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <Button Grid.Column="0" Style="{StaticResource ChipButton}" HorizontalAlignment="Stretch"
                             Content="{DynamicResource S.RefreshKey}" Command="{Binding GoSubscriptionCommand}"
                             Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
-                    <Button x:Name="CheckBtn" Grid.Column="1" Style="{StaticResource ChipButton}" HorizontalAlignment="Stretch"
-                            Margin="8,0,8,0" Content="{DynamicResource S.Check}" Command="{Binding CheckCommand}"
-                            Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}}"/>
-                    <Button Grid.Column="2" Style="{StaticResource ChipButton}" HorizontalAlignment="Stretch"
-                            Content="{DynamicResource S.Connections}" Command="{Binding GoConnectionsCommand}"
+                    <Button Grid.Column="1" Style="{StaticResource ChipButton}" HorizontalAlignment="Stretch"
+                            Margin="8,0,0,0" Content="{DynamicResource S.Connections}" Command="{Binding GoConnectionsCommand}"
                             Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}}"/>
 
-                    <TextBlock Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding CoreVersion}"
+                    <TextBlock Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding CoreVersion}"
                                HorizontalAlignment="Right" VerticalAlignment="Center"
                                FontSize="10.5" Foreground="{DynamicResource TextTertiary}"
                                Visibility="{Binding IsConnected, Converter={StaticResource BoolVisInv}}"/>
-
-                    <!-- Check result: transient tooltip-style popup above the button -->
-                    <Popup Grid.Column="1" PlacementTarget="{Binding ElementName=CheckBtn}" Placement="Top"
-                               AllowsTransparency="True" PopupAnimation="Fade" StaysOpen="False"
-                               VerticalOffset="-6" HorizontalOffset="-8"
-                               IsOpen="{Binding CheckResultVisible, Mode=TwoWay}" Opened="CheckPopup_Opened">
-                            <Border Background="{DynamicResource WindowBg}" CornerRadius="8" BorderBrush="{DynamicResource Stroke}"
-                                    BorderThickness="1" Padding="12,10" Margin="10"
-                                    MouseEnter="CheckPopup_MouseEnter" MouseLeave="CheckPopup_MouseLeave">
-                                <Border.Effect>
-                                    <DropShadowEffect BlurRadius="20" ShadowDepth="2" Opacity="0.20" Color="Black"/>
-                                </Border.Effect>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Border Width="26" Height="17" CornerRadius="2.5" BorderBrush="{DynamicResource Stroke}"
-                                            BorderThickness="0.7" Visibility="{Binding CheckHasFlag, Converter={StaticResource BoolVis}}">
-                                        <Border.Background>
-                                            <ImageBrush ImageSource="{Binding CheckFlagImage}" Stretch="Fill"/>
-                                        </Border.Background>
-                                    </Border>
-                                    <Border Width="26" Height="17" CornerRadius="2.5" Background="{DynamicResource CardAlt}"
-                                            BorderBrush="{DynamicResource Stroke}" BorderThickness="0.7"
-                                            Visibility="{Binding CheckHasFlag, Converter={StaticResource BoolVisInv}}">
-                                        <TextBlock Text="{Binding CheckLoc}" FontSize="9" FontWeight="Bold"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource TextSecondary}"/>
-                                    </Border>
-                                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="{DynamicResource S.ExitLabel}" FontSize="10"
-                                                   Foreground="{DynamicResource TextTertiary}"/>
-                                        <TextBlock Text="{Binding CheckIp}" FontSize="13" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource TextPrimary}"
-                                                   Visibility="{Binding CheckBusy, Converter={StaticResource BoolVisInv}}"/>
-                                        <TextBlock Text="…" FontSize="13" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource TextSecondary}"
-                                                   Visibility="{Binding CheckBusy, Converter={StaticResource BoolVis}}"/>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-                        </Popup>
                 </Grid>
             </Grid>
 

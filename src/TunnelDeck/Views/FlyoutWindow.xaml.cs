@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
-using System.Windows.Threading;
 using TunnelDeck.ViewModels;
 
 namespace TunnelDeck.Views;
@@ -9,7 +8,6 @@ namespace TunnelDeck.Views;
 public partial class FlyoutWindow : Window
 {
     private bool _fadingOut;
-    private readonly DispatcherTimer _checkDismiss;
 
     public FlyoutWindow()
     {
@@ -17,9 +15,6 @@ public partial class FlyoutWindow : Window
         // The window no longer auto-hides on focus loss, so you can watch it while
         // browsing. It hides only via the ✕ button or the tray icon — both fade out.
         IsVisibleChanged += (_, e) => { if (e.NewValue is true) FadeIn(); };
-
-        _checkDismiss = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
-        _checkDismiss.Tick += (_, _) => { _checkDismiss.Stop(); SetCheckOpen(false); };
     }
 
     /// <summary>Anchor the flyout to the bottom-right, just above the tray.</summary>
@@ -55,28 +50,6 @@ public partial class FlyoutWindow : Window
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e) => HideToTray();
-
-    // ---- Check result popup (auto-dismiss, pauses while hovered) ----------
-
-    private void SetCheckOpen(bool open)
-    {
-        if (DataContext is MainViewModel vm) vm.CheckResultVisible = open;
-    }
-
-    private void CheckPopup_Opened(object sender, EventArgs e)
-    {
-        _checkDismiss.Stop();
-        if (Environment.GetEnvironmentVariable("TUNNELDECK_DEMO") == "2") return;  // keep open for screenshots
-        _checkDismiss.Start();
-    }
-
-    private void CheckPopup_MouseEnter(object sender, MouseEventArgs e) => _checkDismiss.Stop();
-
-    private void CheckPopup_MouseLeave(object sender, MouseEventArgs e)
-    {
-        _checkDismiss.Stop();
-        _checkDismiss.Start();
-    }
 
     private void RunningList_DoubleClick(object sender, MouseButtonEventArgs e)
     {
