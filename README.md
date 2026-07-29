@@ -53,7 +53,7 @@ When you add a website, TunnelDeck routes your browsers through a second local p
 
 ## Install
 
-1. Download **`TunnelDeck-Setup-1.2.2.exe`** from the [latest release](../../releases/latest) and run it.
+1. Download **`TunnelDeck-Setup-1.2.3.exe`** from the [latest release](../../releases/latest) and run it.
    The installer sets up the app, a desktop + Start-menu shortcut, and the required network-filter driver.
 2. Launch TunnelDeck (it opens from the tray icon).
 3. Paste your **subscription key**, pick a server, add the apps/sites you want, and hit **Connect**.

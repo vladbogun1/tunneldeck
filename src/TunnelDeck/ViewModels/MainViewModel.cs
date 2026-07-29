@@ -47,11 +47,14 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _sessionDownText = "0 Б";
     [ObservableProperty] private string _sessionUpText = "0 Б";
 
-    // Check result mini-plate (exit IP + flag)
+    // Check result popup (exit IP + flag)
     [ObservableProperty] private bool _checkResultVisible;
+    [ObservableProperty] private bool _checkBusy;
     [ObservableProperty] private string _checkIp = "";
-    [ObservableProperty] private string _checkFlag = "";
     [ObservableProperty] private string _checkLoc = "";
+    [ObservableProperty] private System.Windows.Media.ImageSource? _checkFlagImage;
+    public bool CheckHasFlag => CheckFlagImage is not null;
+    partial void OnCheckFlagImageChanged(System.Windows.Media.ImageSource? value) => OnPropertyChanged(nameof(CheckHasFlag));
 
     // Auto-update
     [ObservableProperty] private bool _updateAvailable;
@@ -127,7 +130,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             Status = e.Status;
             StatusText = StatusWord(e.Status);
-            StatusDetail = e.Message ?? "";
+            // When connected, the server/country is already shown in the dropdown,
+            // so we skip the "· <country>" detail line to keep the card light.
+            StatusDetail = e.Status == ConnectionStatus.Connected ? "" : (e.Message ?? "");
             OnPropertyChanged(nameof(IsConnected));
             OnPropertyChanged(nameof(IsActive));
             OnPropertyChanged(nameof(ConnectLabel));
@@ -379,8 +384,13 @@ public sealed partial class MainViewModel : ObservableObject
         if (!IsConnected) { StatusDetail = "Сначала подключитесь."; return; }
         try
         {
-            CheckResultVisible = false;
-            StatusDetail = "Проверка выхода…";
+            // Show the popup immediately in a loading state, then fill it in.
+            CheckBusy = true;
+            CheckIp = "";
+            CheckLoc = "";
+            CheckFlagImage = null;
+            CheckResultVisible = true;
+
             var handler = new HttpClientHandler
             {
                 Proxy = new WebProxy($"socks5://{SingBoxConfigBuilder.SocksEndpoint}"),
@@ -391,26 +401,20 @@ public sealed partial class MainViewModel : ObservableObject
             var trace = await http.GetStringAsync("https://www.cloudflare.com/cdn-cgi/trace");
             var ip = TraceField(trace, "ip");
             var loc = TraceField(trace, "loc");
-            if (string.IsNullOrEmpty(ip)) { StatusDetail = "Проверка: ответ пустой."; return; }
 
-            StatusDetail = "";
+            CheckBusy = false;
+            if (string.IsNullOrEmpty(ip)) { CheckIp = "—"; return; }
             CheckIp = ip;
             CheckLoc = loc;
-            CheckFlag = FlagEmoji(loc);
-            CheckResultVisible = true;
+            CheckFlagImage = FlagFactory.For(loc);
         }
         catch (Exception ex)
         {
+            CheckBusy = false;
+            CheckIp = "—";
+            CheckLoc = "";
             StatusDetail = "Проверка не удалась: " + ex.Message;
         }
-    }
-
-    /// <summary>Turn a 2-letter ISO country code into its flag emoji (regional indicators).</summary>
-    private static string FlagEmoji(string cc)
-    {
-        cc = (cc ?? "").Trim().ToUpperInvariant();
-        if (cc.Length != 2 || !cc.All(char.IsLetter)) return "🌐";
-        return string.Concat(cc.Select(c => char.ConvertFromUtf32(0x1F1E6 + (c - 'A'))));
     }
 
     private static string TraceField(string trace, string key)
@@ -668,7 +672,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         Status = ConnectionStatus.Connected;
         StatusText = Loc.T("S.St.Connected");
-        StatusDetail = $"{Loc.T("S.St.Connected")} · Польша";
+        StatusDetail = "";   // real app also clears this when connected (server shown in dropdown)
         ShowSpeed = true;
         TotalDownText = "4,2 МБ/с";
         TotalUpText = "180 КБ/с";
@@ -687,9 +691,10 @@ public sealed partial class MainViewModel : ObservableObject
         if (Environment.GetEnvironmentVariable("TUNNELDECK_DEMO") == "2")
         {
             StatusDetail = "";
+            CheckBusy = false;
             CheckIp = "146.70.28.14";
-            CheckLoc = "PL";
-            CheckFlag = FlagEmoji("PL");
+            CheckLoc = "NL";
+            CheckFlagImage = FlagFactory.For("NL");
             CheckResultVisible = true;
             var demoPings = new[] { 38, 120, 260 };
             for (int i = 0; i < Servers.Count; i++) Servers[i].PingMs = demoPings[i % demoPings.Length];

@@ -39,12 +39,10 @@
                         <TextBlock Text="TunnelDeck" FontSize="17" FontWeight="Bold" Margin="9,0,0,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Style="{StaticResource IconButton}" ToolTip="{DynamicResource S.TipMinimize}" Click="Minimize_Click">
-                            <Border Width="12" Height="2" CornerRadius="1" Background="{StaticResource TextSecondary}"
-                                    VerticalAlignment="Center"/>
-                        </Button>
                         <Button Style="{StaticResource IconButton}" Content="⚙"
                                 FontSize="16" ToolTip="{DynamicResource S.TipSettings}" Command="{Binding GoSettingsCommand}"/>
+                        <Button Style="{StaticResource IconButton}" Content="✕" FontSize="12"
+                                ToolTip="{DynamicResource S.TipMinimize}" Click="Minimize_Click"/>
                     </StackPanel>
                 </Grid>
 
@@ -90,45 +88,22 @@
                                    FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"
                                    Visibility="{Binding StatusDetail, Converter={StaticResource BoolVis}}"/>
 
-                        <!-- Total tunnel throughput (while connected) -->
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
+                        <!-- Throughput (live) + cumulative session totals, one compact row -->
+                        <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
                                     Visibility="{Binding ShowSpeed, Converter={StaticResource BoolVis}}">
                             <TextBlock Text="↓" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Green}" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding TotalDownText}" FontSize="12" Margin="4,0,14,0"
+                            <TextBlock Text="{Binding TotalDownText}" FontSize="12" Margin="4,0,12,0"
                                        Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
                             <TextBlock Text="↑" FontSize="12" FontWeight="Bold" Foreground="{StaticResource Accent}" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding TotalUpText}" FontSize="12" Margin="4,0,0,0"
                                        Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                            <TextBlock Text="·" FontSize="12" Margin="10,0,10,0" VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextTertiary}"/>
+                            <TextBlock FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextTertiary}"
+                                       ToolTip="{DynamicResource S.Session}">
+                                <Run Text="{Binding SessionDownText, Mode=OneWay}"/><Run Text=" / "/><Run Text="{Binding SessionUpText, Mode=OneWay}"/>
+                            </TextBlock>
                         </StackPanel>
-
-                        <!-- Cumulative session traffic -->
-                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0"
-                                    Visibility="{Binding ShowDuration, Converter={StaticResource BoolVis}}">
-                            <TextBlock Text="{DynamicResource S.Session}" FontSize="11" VerticalAlignment="Center"
-                                       Foreground="{StaticResource TextTertiary}" Margin="0,0,8,0"/>
-                            <TextBlock Text="↓" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Green}" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding SessionDownText}" FontSize="11" Margin="3,0,12,0"
-                                       Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center"/>
-                            <TextBlock Text="↑" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Accent}" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding SessionUpText}" FontSize="11" Margin="3,0,0,0"
-                                       Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center"/>
-                        </StackPanel>
-
-                        <!-- Check result mini-plate (exit IP + flag) -->
-                        <Border Background="{StaticResource CardAlt}" CornerRadius="7" Padding="10,7" Margin="0,10,0,0"
-                                BorderBrush="{StaticResource Stroke}" BorderThickness="1"
-                                Visibility="{Binding CheckResultVisible, Converter={StaticResource BoolVis}}">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding CheckFlag}" FontSize="18" VerticalAlignment="Center"
-                                           FontFamily="Segoe UI Emoji"/>
-                                <StackPanel Margin="9,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="{DynamicResource S.ExitLabel}" FontSize="10"
-                                               Foreground="{StaticResource TextTertiary}"/>
-                                    <TextBlock Text="{Binding CheckIp}" FontSize="12.5" FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextPrimary}"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
 
                         <ComboBox x:Name="ServerBox" Margin="0,14,0,0"
                                   Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"
@@ -279,9 +254,48 @@
                         <Button Style="{StaticResource LinkButton}" Content="{DynamicResource S.RefreshKey}"
                                 Command="{Binding GoSubscriptionCommand}"
                                 Visibility="{Binding HasSubscription, Converter={StaticResource BoolVis}}"/>
-                        <Button Style="{StaticResource LinkButton}" Content="{DynamicResource S.Check}" Margin="6,0,0,0"
+                        <Button x:Name="CheckBtn" Style="{StaticResource LinkButton}" Content="{DynamicResource S.Check}" Margin="6,0,0,0"
                                 Command="{Binding CheckCommand}"
                                 Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}}"/>
+
+                        <!-- Check result: transient tooltip-style popup above the button -->
+                        <Popup PlacementTarget="{Binding ElementName=CheckBtn}" Placement="Top"
+                               AllowsTransparency="True" PopupAnimation="Fade" StaysOpen="False"
+                               VerticalOffset="-6" HorizontalOffset="-8"
+                               IsOpen="{Binding CheckResultVisible, Mode=TwoWay}" Opened="CheckPopup_Opened">
+                            <Border Background="{StaticResource WindowBg}" CornerRadius="8" BorderBrush="{StaticResource Stroke}"
+                                    BorderThickness="1" Padding="12,10" Margin="10"
+                                    MouseEnter="CheckPopup_MouseEnter" MouseLeave="CheckPopup_MouseLeave">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="20" ShadowDepth="2" Opacity="0.20" Color="Black"/>
+                                </Border.Effect>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Width="26" Height="17" CornerRadius="2.5" BorderBrush="{StaticResource Stroke}"
+                                            BorderThickness="0.7" Visibility="{Binding CheckHasFlag, Converter={StaticResource BoolVis}}">
+                                        <Border.Background>
+                                            <ImageBrush ImageSource="{Binding CheckFlagImage}" Stretch="Fill"/>
+                                        </Border.Background>
+                                    </Border>
+                                    <Border Width="26" Height="17" CornerRadius="2.5" Background="{StaticResource CardAlt}"
+                                            BorderBrush="{StaticResource Stroke}" BorderThickness="0.7"
+                                            Visibility="{Binding CheckHasFlag, Converter={StaticResource BoolVisInv}}">
+                                        <TextBlock Text="{Binding CheckLoc}" FontSize="9" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource TextSecondary}"/>
+                                    </Border>
+                                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{DynamicResource S.ExitLabel}" FontSize="10"
+                                                   Foreground="{StaticResource TextTertiary}"/>
+                                        <TextBlock Text="{Binding CheckIp}" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimary}"
+                                                   Visibility="{Binding CheckBusy, Converter={StaticResource BoolVisInv}}"/>
+                                        <TextBlock Text="…" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextSecondary}"
+                                                   Visibility="{Binding CheckBusy, Converter={StaticResource BoolVis}}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </Popup>
                     </StackPanel>
                     <TextBlock Text="{Binding CoreVersion}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                FontSize="10.5" Foreground="{StaticResource TextTertiary}"/>

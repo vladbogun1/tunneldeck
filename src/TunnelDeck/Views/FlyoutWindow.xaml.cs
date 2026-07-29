@@ -1,18 +1,25 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using TunnelDeck.ViewModels;
 
 namespace TunnelDeck.Views;
 
 public partial class FlyoutWindow : Window
 {
+    private bool _fadingOut;
+    private readonly DispatcherTimer _checkDismiss;
+
     public FlyoutWindow()
     {
         InitializeComponent();
         // The window no longer auto-hides on focus loss, so you can watch it while
-        // browsing. It hides only via the minimize button or the tray icon.
+        // browsing. It hides only via the ✕ button or the tray icon — both fade out.
         IsVisibleChanged += (_, e) => { if (e.NewValue is true) FadeIn(); };
+
+        _checkDismiss = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+        _checkDismiss.Tick += (_, _) => { _checkDismiss.Stop(); SetCheckOpen(false); };
     }
 
     /// <summary>Anchor the flyout to the bottom-right, just above the tray.</summary>
@@ -30,14 +37,46 @@ public partial class FlyoutWindow : Window
         BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, new Duration(TimeSpan.FromMilliseconds(150))));
     }
 
-    /// <summary>Hide to tray (via the minimize button) and reset to the main page.</summary>
-    public void MinimizeToTray()
+    /// <summary>Fade out, then hide to the tray and reset back to the main page.</summary>
+    public void HideToTray()
     {
-        Hide();
-        if (DataContext is MainViewModel vm) vm.CurrentPage = Page.Main;
+        if (_fadingOut || !IsVisible) return;
+        _fadingOut = true;
+        var anim = new DoubleAnimation(Opacity, 0, new Duration(TimeSpan.FromMilliseconds(130)));
+        anim.Completed += (_, _) =>
+        {
+            _fadingOut = false;
+            Hide();
+            BeginAnimation(OpacityProperty, null);
+            Opacity = 1;
+            if (DataContext is MainViewModel vm) vm.CurrentPage = Page.Main;
+        };
+        BeginAnimation(OpacityProperty, anim);
     }
 
-    private void Minimize_Click(object sender, RoutedEventArgs e) => MinimizeToTray();
+    private void Minimize_Click(object sender, RoutedEventArgs e) => HideToTray();
+
+    // ---- Check result popup (auto-dismiss, pauses while hovered) ----------
+
+    private void SetCheckOpen(bool open)
+    {
+        if (DataContext is MainViewModel vm) vm.CheckResultVisible = open;
+    }
+
+    private void CheckPopup_Opened(object sender, EventArgs e)
+    {
+        _checkDismiss.Stop();
+        if (Environment.GetEnvironmentVariable("TUNNELDECK_DEMO") == "2") return;  // keep open for screenshots
+        _checkDismiss.Start();
+    }
+
+    private void CheckPopup_MouseEnter(object sender, MouseEventArgs e) => _checkDismiss.Stop();
+
+    private void CheckPopup_MouseLeave(object sender, MouseEventArgs e)
+    {
+        _checkDismiss.Stop();
+        _checkDismiss.Start();
+    }
 
     private void RunningList_DoubleClick(object sender, MouseButtonEventArgs e)
     {

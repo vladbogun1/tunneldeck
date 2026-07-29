@@ -28,7 +28,10 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, ev) => Log("AppDomain", ev.ExceptionObject as Exception);
         TaskScheduler.UnobservedTaskException += (_, ev) => { Log("Task", ev.Exception); ev.SetObserved(); };
 
-        _singleInstance = new Mutex(true, "TunnelDeck.SingleInstance", out bool isNew);
+        // Test hook: a suffix lets a debug instance coexist with the installed app.
+        var instance = Environment.GetEnvironmentVariable("TUNNELDECK_INSTANCE");
+        var mutexName = string.IsNullOrEmpty(instance) ? "TunnelDeck.SingleInstance" : $"TunnelDeck.SingleInstance.{instance}";
+        _singleInstance = new Mutex(true, mutexName, out bool isNew);
         if (!isNew) { Shutdown(); return; }
 
         Paths.EnsureDirs();
@@ -143,7 +146,7 @@ public partial class App : Application
 
     private void ToggleFlyout()
     {
-        if (_flyout is { IsVisible: true }) _flyout.Hide();
+        if (_flyout is { IsVisible: true }) _flyout.HideToTray();
         else ShowFlyout();
     }
 
