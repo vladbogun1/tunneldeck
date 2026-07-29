@@ -124,13 +124,47 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
+                        <!-- Sites -->
+                        <TextBlock Text="САЙТЫ ЧЕРЕЗ VPN" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextTertiary}" Margin="2,12,0,8"
+                                   Visibility="{Binding HasSites, Converter={StaticResource BoolVis}}"/>
+                        <ItemsControl ItemsSource="{Binding TunneledSites}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource Card}" CornerRadius="8" Padding="12,10"
+                                            Margin="0,0,0,8" BorderBrush="{StaticResource Stroke}" BorderThickness="1">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" FontFamily="Segoe MDL2 Assets" Text="&#xE774;"
+                                                       FontSize="20" Foreground="{StaticResource Accent}" VerticalAlignment="Center"/>
+                                            <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Domain}" FontSize="13" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="через браузер" FontSize="11"
+                                                           Foreground="{StaticResource TextSecondary}"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Style="{StaticResource IconButton}" Content="✕"
+                                                    Width="30" Height="30" FontSize="12" ToolTip="Убрать"
+                                                    Command="{Binding DataContext.RemoveSiteCommand,
+                                                              RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
                         <Border Background="{StaticResource CardAlt}" CornerRadius="8" Padding="16" Margin="0,2,0,0"
                                 BorderBrush="{StaticResource Stroke}" BorderThickness="1"
-                                Visibility="{Binding HasApps, Converter={StaticResource BoolVisInv}}">
+                                Visibility="{Binding NothingTunneled, Converter={StaticResource BoolVis}}">
                             <StackPanel>
-                                <TextBlock Text="Пока нет приложений" FontSize="13" FontWeight="SemiBold"
+                                <TextBlock Text="Пока ничего не выбрано" FontSize="13" FontWeight="SemiBold"
                                            HorizontalAlignment="Center" Foreground="{StaticResource TextSecondary}"/>
-                                <TextBlock Text="Добавьте приложение, чтобы направить его трафик через VPN."
+                                <TextBlock Text="Добавьте приложение или сайт, чтобы направить трафик через VPN."
                                            FontSize="11.5" Foreground="{StaticResource TextTertiary}"
                                            TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"/>
                             </StackPanel>
@@ -186,23 +220,41 @@
 
                 <Grid Grid.Row="1" Margin="0,14,0,0">
                     <TextBox x:Name="SearchBox" Style="{StaticResource Input}"
+                             HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
                              Text="{Binding AddApp.Search, UpdateSourceTrigger=PropertyChanged}"/>
                     <TextBlock Text="Поиск приложения…" IsHitTestVisible="False" VerticalAlignment="Center"
-                               Margin="13,0,0,0" FontSize="13" Foreground="{StaticResource TextTertiary}">
+                               HorizontalAlignment="Left" Margin="13,0,0,0" FontSize="13"
+                               Foreground="{StaticResource TextTertiary}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
+                                <!-- Show only when empty AND not focused, so the caret never overlaps the hint. -->
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding Text, ElementName=SearchBox}" Value=""/>
+                                            <Condition Binding="{Binding IsKeyboardFocused, ElementName=SearchBox}" Value="False"/>
+                                        </MultiDataTrigger.Conditions>
                                         <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
+                                    </MultiDataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
                 </Grid>
 
-                <ListBox Grid.Row="2" Margin="0,10,0,0" x:Name="RunningList"
+                <Grid Grid.Row="2" Margin="0,10,0,0">
+                <!-- Preloader while the running-apps list is being built -->
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Visibility="{Binding AddApp.IsLoading, Converter={StaticResource BoolVis}}">
+                    <ProgressBar IsIndeterminate="True" Width="180" Height="4" Foreground="{StaticResource Accent}"
+                                 Background="{StaticResource Stroke}" BorderThickness="0"/>
+                    <TextBlock Text="Загрузка приложений…" Margin="0,10,0,0" HorizontalAlignment="Center"
+                               FontSize="12.5" Foreground="{StaticResource TextSecondary}"/>
+                </StackPanel>
+
+                <ListBox x:Name="RunningList"
+                         Visibility="{Binding AddApp.IsLoading, Converter={StaticResource BoolVisInv}}"
                          ItemsSource="{Binding AddApp.Apps}" SelectedItem="{Binding AddApp.Selected, Mode=TwoWay}"
                          Background="Transparent" BorderThickness="0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -249,13 +301,49 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
+                </Grid>
 
-                <StackPanel Grid.Row="3" Margin="0,14,0,0">
+                <StackPanel Grid.Row="3" Margin="0,12,0,0">
                     <Button Content="Выбрать .exe вручную…" Style="{StaticResource SecondaryButton}"
                             Command="{Binding BrowseAndAddCommand}"/>
                     <Button Content="Добавить выбранное" Style="{StaticResource PrimaryButton}" Margin="0,8,0,0"
                             Command="{Binding AddSelectedRunningCommand}"
                             IsEnabled="{Binding AddApp.Selected, Converter={StaticResource BoolVis}}"/>
+
+                    <Border Height="1" Background="{StaticResource Stroke}" Margin="0,14,0,10"/>
+                    <TextBlock Text="…или направить через VPN конкретный сайт в браузере:"
+                               FontSize="11.5" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap"/>
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid Grid.Column="0">
+                            <TextBox x:Name="SiteBox" Style="{StaticResource Input}"
+                                     HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
+                                     Text="{Binding AddSiteInput, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="youtube.com" IsHitTestVisible="False" VerticalAlignment="Center"
+                                       HorizontalAlignment="Left" Margin="13,0,0,0" FontSize="13"
+                                       Foreground="{StaticResource TextTertiary}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding Text, ElementName=SiteBox}" Value=""/>
+                                                    <Condition Binding="{Binding IsKeyboardFocused, ElementName=SiteBox}" Value="False"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                        <Button Grid.Column="1" Content="Добавить сайт" Style="{StaticResource PrimaryButton}"
+                                Margin="8,0,0,0" Command="{Binding AddSiteCommand}"/>
+                    </Grid>
                 </StackPanel>
             </Grid>
 

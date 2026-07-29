@@ -24,7 +24,7 @@ public static class AutostartService
         {
             var exe = Environment.ProcessPath;
             if (!string.IsNullOrWhiteSpace(exe))
-                key.SetValue(ValueName, $"\"{exe}\"");
+                key.SetValue(ValueName, $"\"{exe}\" --tray");   // autostart minimized to tray
         }
         else
         {

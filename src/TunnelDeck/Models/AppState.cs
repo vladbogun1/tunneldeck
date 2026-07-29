@@ -22,6 +22,13 @@ public sealed class AppState
     /// <summary>Apps the user wants routed through the VPN.</summary>
     public List<TunneledApp> TunneledApps { get; set; } = new();
 
+    /// <summary>
+    /// Specific websites (domains) to route through the VPN. When set, browsers are
+    /// redirected into a "split" proxy where only these domains take the VPN and the
+    /// rest of the browser goes direct.
+    /// </summary>
+    public List<string> TunneledSites { get; set; } = new();
+
     public AppSettings Settings { get; set; } = new();
 
     public ServerConfig? SelectedServer =>

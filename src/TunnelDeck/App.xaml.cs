@@ -42,7 +42,10 @@ public partial class App : Application
 
         await _vm.InitializeAsync();
 
-        if (!_vm.HasSubscription || Environment.GetEnvironmentVariable("TUNNELDECK_NOHIDE") == "1")
+        // Show the window on a normal launch. Start hidden in the tray only when
+        // launched with --tray (the "start with Windows" autostart entry passes this).
+        var startHidden = e.Args.Any(a => string.Equals(a, "--tray", StringComparison.OrdinalIgnoreCase));
+        if (!startHidden)
             ShowFlyout();
 
         // Test hook: jump to a page for screenshot verification.

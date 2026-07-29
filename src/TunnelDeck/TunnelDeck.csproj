@@ -10,12 +10,18 @@
     <AssemblyName>TunnelDeck</AssemblyName>
     <RootNamespace>TunnelDeck</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Version>1.1.0</Version>
     <Company>TunnelDeck</Company>
     <Product>TunnelDeck</Product>
     <!-- Tray app: keep a single self-contained build simple -->
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\icon-on.png" />
+    <Resource Include="Assets\icon-off.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="H.NotifyIcon.Wpf" Version="2.1.3" />

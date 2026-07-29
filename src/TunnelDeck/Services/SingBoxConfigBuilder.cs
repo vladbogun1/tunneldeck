@@ -27,14 +27,55 @@ public static class SingBoxConfigBuilder
     public const int SocksPort = 24808;
     public const string SocksEndpoint = "127.0.0.1:24808";
 
+    /// <summary>Second local proxy for "site mode": browsers go here; only the chosen
+    /// domains take the VPN, the rest goes direct.</summary>
+    public const int SplitPort = 24809;
+    public const string SplitEndpoint = "127.0.0.1:24809";
+
     /// <summary>
     /// Proxy-mode config (no TUN): a local mixed (SOCKS+HTTP) inbound that forwards
     /// everything it receives to the VPN. ProxiFyre redirects only the chosen apps
     /// here, so the system routing table is never touched — connecting/disconnecting
     /// cannot disrupt other apps (e.g. online games).
     /// </summary>
-    public static string BuildProxyMode(ServerConfig server, AppSettings settings)
+    public static string BuildProxyMode(ServerConfig server, AppSettings settings, IReadOnlyList<string>? sites = null)
     {
+        var siteList = (sites ?? Array.Empty<string>())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        var inbounds = new List<object>
+        {
+            new Dictionary<string, object?>
+            {
+                ["type"] = "mixed", ["tag"] = "in", ["listen"] = SocksHost, ["listen_port"] = SocksPort
+            }
+        };
+        if (siteList.Count > 0)
+        {
+            inbounds.Add(new Dictionary<string, object?>
+            {
+                ["type"] = "mixed", ["tag"] = "split", ["listen"] = SocksHost, ["listen_port"] = SplitPort,
+                ["sniff"] = true   // read TLS SNI / HTTP host so we can route by domain
+            });
+        }
+
+        var routeRules = new List<object>();
+        routeRules.AddRange(ServerDomainRule(server, "outbound", "direct"));
+        if (siteList.Count > 0)
+        {
+            // Only the chosen domains from the "split" (browser) inbound take the VPN.
+            routeRules.Add(new Dictionary<string, object?>
+            {
+                ["inbound"] = new[] { "split" }, ["domain_suffix"] = siteList, ["outbound"] = "proxy"
+            });
+            // Everything else from the browser goes direct.
+            routeRules.Add(new Dictionary<string, object?>
+            {
+                ["inbound"] = new[] { "split" }, ["outbound"] = "direct"
+            });
+        }
+
         var config = new Dictionary<string, object?>
         {
             ["log"] = new Dictionary<string, object?>
@@ -42,22 +83,13 @@ public static class SingBoxConfigBuilder
                 ["level"] = string.IsNullOrWhiteSpace(settings.LogLevel) ? "warn" : settings.LogLevel,
                 ["timestamp"] = true
             },
-            ["dns"] = BuildProxyModeDns(server),
-            ["inbounds"] = new object[]
-            {
-                new Dictionary<string, object?>
-                {
-                    ["type"] = "mixed",
-                    ["tag"] = "in",
-                    ["listen"] = SocksHost,
-                    ["listen_port"] = SocksPort
-                }
-            },
+            ["dns"] = BuildProxyModeDns(server, siteList),
+            ["inbounds"] = inbounds,
             ["outbounds"] = BuildOutbounds(server),
             ["route"] = new Dictionary<string, object?>
             {
-                ["rules"] = ServerDomainRule(server, "outbound", "direct"),
-                ["final"] = "proxy"
+                ["rules"] = routeRules,
+                ["final"] = "proxy"   // the full-tunnel "in" inbound sends everything to the VPN
             },
             ["experimental"] = new Dictionary<string, object?>
             {
@@ -67,18 +99,26 @@ public static class SingBoxConfigBuilder
         return JsonSerializer.Serialize(config, Json);
     }
 
-    private static object BuildProxyModeDns(ServerConfig server) => new Dictionary<string, object?>
+    private static object BuildProxyModeDns(ServerConfig server, List<string> sites)
     {
-        ["servers"] = new object[]
+        var rules = new List<object>();
+        rules.AddRange(ServerDomainRule(server, "server", "dns-direct"));
+        if (sites.Count > 0)
+            rules.Add(new Dictionary<string, object?> { ["domain_suffix"] = sites, ["server"] = "dns-proxy" });
+
+        return new Dictionary<string, object?>
         {
-            new Dictionary<string, object?> { ["tag"] = "dns-proxy", ["address"] = "https://1.1.1.1/dns-query", ["detour"] = "proxy" },
-            new Dictionary<string, object?> { ["tag"] = "dns-direct", ["address"] = "https://8.8.8.8/dns-query", ["detour"] = "direct" }
-        },
-        ["rules"] = ServerDomainRule(server, "server", "dns-direct"),
-        ["final"] = "dns-proxy",
-        ["strategy"] = "ipv4_only",
-        ["independent_cache"] = true
-    };
+            ["servers"] = new object[]
+            {
+                new Dictionary<string, object?> { ["tag"] = "dns-proxy", ["address"] = "https://1.1.1.1/dns-query", ["detour"] = "proxy" },
+                new Dictionary<string, object?> { ["tag"] = "dns-direct", ["address"] = "https://8.8.8.8/dns-query", ["detour"] = "direct" }
+            },
+            ["rules"] = rules,
+            ["final"] = "dns-proxy",
+            ["strategy"] = "ipv4_only",
+            ["independent_cache"] = true
+        };
+    }
 
     /// <summary>
     /// A rule forcing the proxy server's own hostname to resolve/route DIRECTLY

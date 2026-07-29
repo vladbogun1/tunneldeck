@@ -23,8 +23,11 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _loading;   // suppress persist/apply side-effects while (re)hydrating
 
     public ObservableCollection<AppEntryViewModel> TunneledApps { get; } = new();
+    public ObservableCollection<SiteEntryViewModel> TunneledSites { get; } = new();
     public ObservableCollection<ServerConfig> Servers { get; } = new();
     public string[] LogLevels { get; } = { "trace", "debug", "info", "warn", "error" };
+
+    [ObservableProperty] private string _addSiteInput = "";
 
     [ObservableProperty] private Page _currentPage = Page.Main;
     [ObservableProperty] private AddAppViewModel? _addApp;
@@ -47,6 +50,8 @@ public sealed partial class MainViewModel : ObservableObject
     public bool IsConnected => Status is ConnectionStatus.Connected;
     public bool HasSubscription => Servers.Count > 0;
     public bool HasApps => TunneledApps.Count > 0;
+    public bool HasSites => TunneledSites.Count > 0;
+    public bool NothingTunneled => !HasApps && !HasSites;
 
     public bool IsActive => Status is ConnectionStatus.Connected
         or ConnectionStatus.Connecting or ConnectionStatus.Reconnecting;
@@ -87,7 +92,8 @@ public sealed partial class MainViewModel : ObservableObject
             else StopStats();
         });
 
-        TunneledApps.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasApps));
+        TunneledApps.CollectionChanged += (_, _) => { OnPropertyChanged(nameof(HasApps)); OnPropertyChanged(nameof(NothingTunneled)); };
+        TunneledSites.CollectionChanged += (_, _) => { OnPropertyChanged(nameof(HasSites)); OnPropertyChanged(nameof(NothingTunneled)); };
 
         _stats.Updated += (_, speeds) => OnUi(() =>
         {
@@ -159,6 +165,11 @@ public sealed partial class MainViewModel : ObservableObject
         foreach (var app in _state.TunneledApps)
             TunneledApps.Add(Wrap(app));
 
+        TunneledSites.Clear();
+        foreach (var d in _state.TunneledSites)
+            TunneledSites.Add(new SiteEntryViewModel(d));
+        OnPropertyChanged(nameof(HasSites));
+
         StartWithWindows = _state.Settings.StartWithWindows;
         AutoConnectOnLaunch = _state.Settings.AutoConnectOnLaunch;
         KillSwitch = _state.Settings.KillSwitch;
@@ -218,7 +229,7 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             IsBusy = true;
-            await _core.StartAsync(server, _state.TunneledApps, _state.Settings);
+            await _core.StartAsync(server, _state.TunneledApps, _state.Settings, _state.TunneledSites);
         }
         catch (Exception ex)
         {
@@ -240,7 +251,7 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task ApplyIfRunningAsync()
     {
         if (SelectedServer is null) return;
-        await _core.ApplyAsync(SelectedServer, _state.TunneledApps, _state.Settings);
+        await _core.ApplyAsync(SelectedServer, _state.TunneledApps, _state.Settings, _state.TunneledSites);
     }
 
     /// <summary>Fire-and-forget apply that never lets an exception escape (crash-safe).</summary>
@@ -292,6 +303,53 @@ public sealed partial class MainViewModel : ObservableObject
         TunneledApps.Remove(entry);
         Persist();
         SafeApply();
+    }
+
+    // ---- Sites ----------------------------------------------------------
+
+    [RelayCommand]
+    private void AddSite()
+    {
+        var domain = NormalizeDomain(AddSiteInput);
+        if (domain is null) { StatusDetail = "Введите корректный домен, например youtube.com"; return; }
+        if (_state.TunneledSites.Any(d => string.Equals(d, domain, StringComparison.OrdinalIgnoreCase)))
+        {
+            AddSiteInput = "";
+            GoBack();
+            return;
+        }
+        _state.TunneledSites.Add(domain);
+        TunneledSites.Add(new SiteEntryViewModel(domain));
+        AddSiteInput = "";
+        OnPropertyChanged(nameof(HasSites));
+        Persist();
+        SafeApply();
+        GoBack();
+    }
+
+    [RelayCommand]
+    private void RemoveSite(SiteEntryViewModel? entry)
+    {
+        if (entry is null) return;
+        _state.TunneledSites.RemoveAll(d => string.Equals(d, entry.Domain, StringComparison.OrdinalIgnoreCase));
+        TunneledSites.Remove(entry);
+        OnPropertyChanged(nameof(HasSites));
+        Persist();
+        SafeApply();
+    }
+
+    /// <summary>Reduce a user-entered URL/host to a bare domain (drop scheme/path/port/www).</summary>
+    private static string? NormalizeDomain(string? input)
+    {
+        var s = (input ?? "").Trim();
+        if (s.Length == 0) return null;
+        var slash = s.IndexOf("://", StringComparison.Ordinal);
+        if (slash >= 0) s = s[(slash + 3)..];
+        s = s.Split('/')[0].Split('?')[0].Split(':')[0].Trim().ToLowerInvariant();
+        if (s.StartsWith("www.")) s = s[4..];
+        // must contain a dot and only valid host characters
+        if (!s.Contains('.') || s.Any(c => !(char.IsLetterOrDigit(c) || c == '.' || c == '-'))) return null;
+        return s;
     }
 
     // ---- Subscription ----------------------------------------------------

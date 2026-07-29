@@ -33,6 +33,7 @@ public sealed class CoreController
 
     private ServerConfig? _server;
     private IReadOnlyList<TunneledApp> _apps = Array.Empty<TunneledApp>();
+    private IReadOnlyList<string> _sites = Array.Empty<string>();
     private AppSettings _settings = new();
     private string? _currentServerId;
 
@@ -46,10 +47,12 @@ public sealed class CoreController
         get { lock (_gate) return _sb is { HasExited: false }; }
     }
 
-    public async Task StartAsync(ServerConfig server, IReadOnlyList<TunneledApp> apps, AppSettings settings)
+    public async Task StartAsync(ServerConfig server, IReadOnlyList<TunneledApp> apps, AppSettings settings,
+        IReadOnlyList<string>? sites = null)
     {
         _server = server;
         _apps = apps;
+        _sites = sites ?? Array.Empty<string>();
         _settings = settings;
         _currentServerId = server.Id;
 
@@ -89,7 +92,7 @@ public sealed class CoreController
             }
             try
             {
-                _pf.WriteConfig(_apps);
+                _pf.WriteConfig(_apps, _sites);
                 _pf.Start();
                 SetStatus(ConnectionStatus.Connected, $"Подключено · {_server?.Name}");
             }
@@ -124,13 +127,19 @@ public sealed class CoreController
     /// this never disrupts other apps. If only the app list changed we just rewrite
     /// ProxiFyre's config and restart it; if the server changed we restart everything.
     /// </summary>
-    public async Task ApplyAsync(ServerConfig server, IReadOnlyList<TunneledApp> apps, AppSettings settings)
+    public async Task ApplyAsync(ServerConfig server, IReadOnlyList<TunneledApp> apps, AppSettings settings,
+        IReadOnlyList<string>? sites = null)
     {
         if (!IsRunning && !_wantRunning) return;
 
-        if (server.Id != _currentServerId)
+        var siteList = sites ?? Array.Empty<string>();
+
+        // Adding/removing a site changes the sing-box config (split inbound), so the
+        // core must restart too; an app-only change just restarts ProxiFyre.
+        var sitesChanged = !_sites.SequenceEqual(siteList, StringComparer.OrdinalIgnoreCase);
+        if (server.Id != _currentServerId || sitesChanged)
         {
-            await StartAsync(server, apps, settings);
+            await StartAsync(server, apps, settings, siteList);
             return;
         }
 
@@ -138,7 +147,7 @@ public sealed class CoreController
         _settings = settings;
         try
         {
-            _pf.WriteConfig(_apps);
+            _pf.WriteConfig(_apps, _sites);
             _pf.Start(); // restart ProxiFyre with the new app list (no route changes)
         }
         catch (Exception ex)
@@ -149,7 +158,7 @@ public sealed class CoreController
 
     private void LaunchSingBox()
     {
-        var config = SingBoxConfigBuilder.BuildProxyMode(_server!, _settings);
+        var config = SingBoxConfigBuilder.BuildProxyMode(_server!, _settings, _sites);
         File.WriteAllText(Paths.GeneratedConfig, config);
 
         var psi = new ProcessStartInfo
